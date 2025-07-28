@@ -1,0 +1,428 @@
+
+
+[Question]
+Next.js, TailwindCSS, Shadcn/ui, TypeScriptを用いてフロントエンド
+アプリケーションを開発しています。
+
+以下の現状のプログラムはバックエンドAPIサーバからStreamingでデータを受信し、
+そのデータを状態変数に格納しておき、その情報をもとに適宜レンダリング
+する処理を行うプログラムです。
+
+## 指示事項
+下記条件に基づき、現状のプログラムの修正案（QA.tsxのコメント記載部を
+完成させる）を示してください。
+
+## 条件
+case "started"の際に、ResponseEvent型のインスタンスを作成し、これを
+setResponseInfo()を用いて状態変数responseInfoに保存する。
+作成するインスタンスは、
+- s_res: StreamResponse型のevent="started"のpayloadも含めて格納
+- r_time: Streamデータ受信時の日時を格納
+
+同様に、case "code"の際にも、ResponseEvent型のインスタンスを作成し、
+setResponseInfo()を用いて状態変数responseInfoに保存する。
+作成するインスタンスは、
+- s_res: StreamResponse型のevent="code"のpayloadも含めて格納
+- r_time: Streamデータ受信時の日時を格納
+
+そして、
+          <div className="col-span-3 text-sm">
+            {/* ここに上記条件に基づく処理を記述したい */}
+          </div>
+この部分に、case "started"の際に設定したresponseInfoの情報を使って、
+r_timeの値を表示させる処理を記述する。
+
+## 現状のプログラム
+[types.ts] （型定義）
+export type ChatStep = { status: "Unloaded" | "Loaded" | "Sended" };
+export type State = { steps: ChatStep[] };
+export type Action =
+  | { type: "LOAD_FILE"; index: number }
+  | { type: "SEND_PROMPT"; index: number };
+export type FileInfo = {
+  filename: string;
+  content: string;
+  mtime: Date;
+};
+export type PromptRequest = {
+  prompt: string;
+};
+export type PromptResponse = {
+  prompt: string;
+};
+
+export type StreamResponse =
+  | { event: "code"; payload: { language: string; code: string } }
+  | { event: "agent_update"; payload: { agent_name: string } }
+  | { event: "delta"; payload: { text: string } }
+  | { event: "started"; payload: { message: string } }
+  | { event: "done"; payload: { message: string } };
+
+export type ResponseEvent = {
+  s_res: StreamResponse;
+  r_time: Date;
+};
+
+export type ResponseInfo = {
+  r_event: ResponseEvent[];
+};
+
+[page.tsx] メインコンポーネント
+"use client";
+import { useEffect, useReducer, useState, useRef } from "react";
+import { Separator } from "@/components/ui/separator";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import FileUploader from "./FileUploader";
+import QA from "./QA";
+import ShowPrompt from "./ShowPrompt";
+import ShowResponse from "./ShowResponse";
+import { State, FileInfo, ResponseInfo } from "./types";
+import { reducer } from "./reducer";
+
+const initialState: State = {
+  steps: [{ status: "Unloaded" }],
+};
+const initialFileInfo: FileInfo[] = [
+  { filename: "", content: "", mtime: new Date(0) },
+];
+const initialResponseInfo: ResponseInfo[] = [];
+
+export default function App() {
+  const [state, dispatch] = useReducer(reducer, initialState);
+  const [fileInfo, setFileInfo] = useState<FileInfo[]>(initialFileInfo);
+  const [responseInfo, setResponseInfo] =
+    useState<ResponseInfo[]>(initialResponseInfo);
+  useEffect(() => {
+    console.log("fileInfo updated: ", fileInfo);
+    scrollRightPanel();
+  }, [fileInfo]);
+  useEffect(() => {
+    console.log("state updated: ", state);
+    scrollLeftPanel();
+  }, [state]);
+  useEffect(() => {
+    console.log("responseInfo updated: ", responseInfo);
+    scrollRightPanel();
+  }, [responseInfo]);
+
+  const rightPanel = useRef<HTMLDivElement>(null);
+  const leftPanel = useRef<HTMLDivElement>(null);
+
+  const scrollRightPanel = () => {
+    if (rightPanel.current) {
+      rightPanel.current.scrollIntoView({
+        behavior: "smooth",
+        block: "end",
+      });
+    }
+  };
+  const scrollLeftPanel = () => {
+    if (leftPanel.current) {
+      leftPanel.current.scrollIntoView({
+        behavior: "smooth",
+        block: "end",
+      });
+    }
+  };
+
+  if (fileInfo.length < state.steps.length) {
+    setFileInfo((prev) => [
+      ...prev,
+      { filename: "", content: "", mtime: new Date(0) },
+    ]);
+  }
+
+  return (
+    <div className="flex h-screen">
+      {/* Left-Panel */}
+      <ScrollArea className="w-1/2 p-4 border-r space-y-4">
+        <div ref={leftPanel}>
+          {state.steps.map((step, index) => (
+            <div key={index}>
+              <p className="text-xl my-2">
+                Step {index} - Status: {step.status}
+              </p>
+              <FileUploader
+                index={index}
+                status={step.status}
+                dispatch={dispatch}
+                setFileInfo={setFileInfo}
+              />
+              <QA
+                index={index}
+                status={step.status}
+                dispatch={dispatch}
+                fileInfo={fileInfo[index]}
+                setResponseInfo={setResponseInfo}
+                responseInfo={responseInfo[index]}
+              />
+              <Separator />
+            </div>
+          ))}
+        </div>
+      </ScrollArea>
+      {/* Right-Panel */}
+      <ScrollArea className="w-1/2 p-4 border-r space-y-4">
+        <div ref={rightPanel}>
+          {state.steps.map((step, index) => (
+            <div key={index}>
+              <p className="text-xl my-2">
+                Step {index} - Status: {step.status}
+              </p>
+              <ShowPrompt
+                index={index}
+                status={step.status}
+                fileInfo={fileInfo}
+              />
+              <ShowResponse
+                index={index}
+                status={step.status}
+                responseInfo={responseInfo}
+              />
+            </div>
+          ))}
+        </div>
+      </ScrollArea>
+    </div>
+  );
+}
+
+[QA.tsx] バックエンドAPIとの通信及び結果を状態変数に格納、画面表示
+"use client";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
+import { Send } from "lucide-react";
+import { Action, FileInfo, PromptRequest } from "./types";
+import { ResponseInfo, StreamResponse } from "./types";
+
+interface QAProps {
+  status: string;
+  index: number;
+  dispatch: React.Dispatch<Action>;
+  fileInfo: FileInfo;
+  setResponseInfo: React.Dispatch<React.SetStateAction<ResponseInfo[]>>;
+  responseInfo: ResponseInfo;
+}
+
+const QA = ({
+  status,
+  index,
+  dispatch,
+  fileInfo,
+  setResponseInfo,
+  responseInfo,
+}: QAProps) => {
+  const sendPrompt = async () => {
+    console.log("sendPrompt called");
+    const requestBody: PromptRequest = { prompt: fileInfo.content };
+    try {
+      const response = await fetch("http://localhost:8000/main", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(requestBody),
+      });
+      if (!response.body) {
+        console.log("fetch response error");
+        return;
+      }
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let partial = "";
+
+      dispatch({ type: "SEND_PROMPT", index });
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        partial += decoder.decode(value, { stream: true });
+        const lines = partial.split("\n");
+        partial = lines.pop() ?? "";
+
+        for (const line of lines) {
+          if (!line.trim()) continue;
+
+          try {
+            const data: StreamResponse = JSON.parse(line.trim());
+            console.log(`data (StreamResponse): ${data}`);
+            switch (data.event) {
+              case "started":
+                console.log(`Started: ${data.payload.message}`);
+                const event_time = new Date();
+                setResponseInfo((prev) => {
+                  const updated = [...prev];
+                  updated[index] = {
+                    // ここを完成させる
+                  };
+                  return updated;
+                });
+
+                break;
+              case "agent_update":
+                console.log(`Agent updated to ${data.payload.agent_name}`);
+                break;
+              case "code":
+                setResponseInfo((prev) => {
+                  const updated = [...prev];
+                  updated[index] = {
+                    // ここを完成させる
+                  };
+                  return updated;
+                });
+                break;
+              case "done":
+                console.log(`Done: ${data.payload.message}`);
+                break;
+            }
+          } catch (e) {
+            console.log("Failed to parse stream line", line, e);
+          }
+        }
+      }
+    } catch (error) {
+      console.log("Error sending: ", error);
+    }
+  };
+
+  return (
+    <div className="space-y-2 mb-4">
+      {(status === "Loaded" || status === "Sended") && (
+        <div className="grid grid-cols-6 items-center">
+          {/* --- filename row --- */}
+          {/* column-A */}
+          <div></div>
+          {/* column-B */}
+          <div className="text-gray-500 text-sm">filename:</div>
+          {/* column-C,D,E */}
+          <div className="col-span-3 text-sm">{fileInfo.filename}</div>
+          {/* column-F */}
+          <div className="col-span-1 row-span-2">
+            <Button onClick={sendPrompt} disabled={status === "Sended"}>
+              <Send className="w-4 h-4 mr-2" />
+            </Button>
+          </div>
+          {/* --- mtime row --- */}
+          {/* column-A */}
+          <div></div>
+          {/* column-B */}
+          <div className="text-gray-500 text-sm">mtime:</div>
+          {/* column-C,D,E */}
+          <div className="col-span-3 text-sm">
+            {fileInfo.mtime.toLocaleString()}
+          </div>
+          {/* column-F */}
+          <div></div>
+        </div>
+      )}
+      {status === "Sended" && (
+        <div className="grid grid-cols-6 items-center">
+          {/* --- avatar row --- */}
+          {/* column-A */}
+          <div>
+            <Avatar>
+              <AvatarImage src="/assistant.png" />
+              <AvatarFallback>As</AvatarFallback>
+            </Avatar>
+          </div>
+          {/* column-B */}
+          <span>Assistant</span>
+          {/* column-C,D,E,F */}
+          <div className="col-span-4"></div>
+          {/* --- rtime row --- */}
+          {/* column-A */}
+          <div></div>
+          {/* column-B */}
+          <div className="text-gray-500 text-sm">rtime:</div>
+          {/* column-C,D,E */}
+          <div className="col-span-3 text-sm">
+            {/* ここに上記条件に基づく処理を記述したい */}
+          </div>
+          {/* column-F */}
+          <div></div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default QA;
+
+
+[Answer]
+以下に、あなたの指示に従って修正された QA.tsx の該当箇所を示します。
+
+✅ 修正案
+1. case "started" および case "code" にて setResponseInfo を正しく更新
+
+case "started":
+  console.log(`Started: ${data.payload.message}`);
+  const event_time = new Date();
+  setResponseInfo((prev) => {
+    const updated = [...prev];
+    updated[index] = {
+      r_event: [{ s_res: data, r_time: event_time }],
+    };
+    return updated;
+  });
+  break;
+
+case "code":
+  const code_time = new Date();
+  setResponseInfo((prev) => {
+    const updated = [...prev];
+    const prevEvents = updated[index]?.r_event ?? [];
+    updated[index] = {
+      r_event: [...prevEvents, { s_res: data, r_time: code_time }],
+    };
+    return updated;
+  });
+  break;
+
+2. r_time を表示するための JSX （QA.tsx 内）
+
+<div className="col-span-3 text-sm">
+  {responseInfo?.r_event?.find((event) => event.s_res.event === "started")?.r_time.toLocaleString() ?? "N/A"}
+</div>
+
+🔁 解説
+responseInfo[index] は ResponseInfo 型で、r_event に ResponseEvent[] を持ちます。
+
+event === "started" のイベントを .find() で取得し、その r_time を toLocaleString() で表示。
+
+"code" イベントが来ても r_event に追記されるようにしてあります。
+
+✅ 最終的な完成形（該当部分のみ抜粋）
+case "started":
+
+case "started":
+  const event_time = new Date();
+  setResponseInfo((prev) => {
+    const updated = [...prev];
+    updated[index] = {
+      r_event: [{ s_res: data, r_time: event_time }],
+    };
+    return updated;
+  });
+  break;
+
+case "code":
+
+case "code":
+  const code_time = new Date();
+  setResponseInfo((prev) => {
+    const updated = [...prev];
+    const prevEvents = updated[index]?.r_event ?? [];
+    updated[index] = {
+      r_event: [...prevEvents, { s_res: data, r_time: code_time }],
+    };
+    return updated;
+  });
+  break;
+
+JSX（QA.tsx の該当 JSX 部分）:
+
+<div className="col-span-3 text-sm">
+  {responseInfo?.r_event?.find((event) => event.s_res.event === "started")?.r_time.toLocaleString() ?? "N/A"}
+</div>
+
+
