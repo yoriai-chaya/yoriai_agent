@@ -31,3 +31,9 @@ export type ResponseEvent = {
 export type ResponseInfo = {
   r_event: ResponseEvent[];
 };
+
+export const EventTypes = {
+  STARTED: "started",
+  AGENT_UPDATE: "agent_update",
+  DONE: "done",
+} as const;

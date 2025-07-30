@@ -1,49 +1,55 @@
-import { ResponseInfo } from "./types";
+import { ResponseInfo, EventTypes, StreamResponse } from "./types";
 
 interface StreamEventProps {
   status: string;
   responseInfo: ResponseInfo;
 }
 
+// Type Guard Function
+function isStartedEvent(
+  event: StreamResponse
+): event is Extract<StreamResponse, { event: typeof EventTypes.STARTED }> {
+  return event.event === EventTypes.STARTED;
+}
+function isUpdateEvent(
+  event: StreamResponse
+): event is Extract<StreamResponse, { event: typeof EventTypes.AGENT_UPDATE }> {
+  return event.event === EventTypes.AGENT_UPDATE;
+}
+function isDoneEvent(
+  event: StreamResponse
+): event is Extract<StreamResponse, { event: typeof EventTypes.DONE }> {
+  return event.event === EventTypes.DONE;
+}
+
 const StreamEvent = ({ status, responseInfo }: StreamEventProps) => {
   // --- started ---
-  const startedEvent = responseInfo?.r_event.find(
-    (ev) => ev.s_res.event === "started"
+  const startedEvent = responseInfo?.r_event.find((ev) =>
+    isStartedEvent(ev.s_res)
   );
   const startedMessage =
-    startedEvent && startedEvent.s_res.event === "started"
+    startedEvent && isStartedEvent(startedEvent.s_res)
       ? startedEvent.s_res.payload.message
       : "";
-  const startedTime =
-    startedEvent && startedEvent.s_res.event === "started"
-      ? startedEvent.r_time.toLocaleString()
-      : "";
+  const startedTime = startedEvent ? startedEvent.r_time.toLocaleString() : "";
 
   // --- agent update ---
-  const updateEvent = responseInfo?.r_event.find(
-    (ev) => ev.s_res.event === "agent_update"
+  const updateEvent = responseInfo?.r_event.find((ev) =>
+    isUpdateEvent(ev.s_res)
   );
   const updateMessage =
-    updateEvent && updateEvent.s_res.event === "agent_update"
+    updateEvent && isUpdateEvent(updateEvent.s_res)
       ? updateEvent.s_res.payload.agent_name
       : "";
-  const updateTime =
-    updateEvent && updateEvent.s_res.event === "agent_update"
-      ? updateEvent.r_time.toLocaleString()
-      : "";
+  const updateTime = updateEvent ? updateEvent.r_time.toLocaleString() : "";
 
   // --- done ---
-  const doneEvent = responseInfo?.r_event.find(
-    (ev) => ev.s_res.event === "done"
-  );
+  const doneEvent = responseInfo?.r_event.find((ev) => isDoneEvent(ev.s_res));
   const doneMessage =
-    doneEvent && doneEvent.s_res.event === "done"
+    doneEvent && isDoneEvent(doneEvent.s_res)
       ? doneEvent.s_res.payload.message
       : "";
-  const doneTime =
-    doneEvent && doneEvent.s_res.event === "done"
-      ? doneEvent.r_time.toLocaleString()
-      : "";
+  const doneTime = doneEvent ? doneEvent.r_time.toLocaleString() : "";
 
   return (
     <div>
