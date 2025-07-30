@@ -11,7 +11,7 @@ interface ShowPromptProps {
 const ShowPrompt = ({ status, index, fileInfo }: ShowPromptProps) => {
   return (
     <div>
-      {(status === "Loaded" || status === "Sended") && (
+      {(status === "Loaded" || status === "Sended" || status === "Done") && (
         <div>
           <p className="text-lg my-1">Request</p>
           <Card className="p-4 bg-slate-100 rounded-md">

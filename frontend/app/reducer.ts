@@ -7,6 +7,9 @@ export const reducer = (state: State, action: Action): State => {
       return { steps: newSteps };
     case "SEND_PROMPT":
       newSteps[action.index].status = "Sended";
+      return { steps: newSteps };
+    case "DONE":
+      newSteps[action.index].status = "Done";
       if (action.index === newSteps.length - 1) {
         newSteps.push({ status: "Unloaded" });
       }

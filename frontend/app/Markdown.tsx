@@ -27,7 +27,7 @@ const Markdown: React.FC<Props> = ({ markdown }) => {
     for (let line of lines) {
       line = line.trimEnd();
 
-      // コードブロックの開始または終了
+      // start or end of a code block
       if (line.startsWith("```")) {
         if (!codeMode) {
           codeMode = true;
@@ -49,7 +49,7 @@ const Markdown: React.FC<Props> = ({ markdown }) => {
         continue;
       }
 
-      // 見出し (#, ##, ###)
+      // heading(h1, h2, h3) (#, ##, ###)
       const headingMatch = line.match(/^(#{1,3})\s+(.*)/);
       if (headingMatch) {
         const level = headingMatch[1].length;
@@ -58,14 +58,14 @@ const Markdown: React.FC<Props> = ({ markdown }) => {
         continue;
       }
 
-      // 番号付きリスト (1. item)
+      // ol: ordered list (1. item)
       if (/^\d+\.\s+/.test(line)) {
         const item = line.replace(/^\d+\.\s+/, "");
         if (listType === "ol" || listType === null) {
           listType = "ol";
           listBuffer.push(item);
         } else {
-          // 前のulが閉じられていない場合
+          // previous <ui> is not closed
           tokens.push({ type: listType, items: listBuffer });
           listBuffer = [item];
           listType = "ol";
@@ -73,14 +73,14 @@ const Markdown: React.FC<Props> = ({ markdown }) => {
         continue;
       }
 
-      // 箇条書きリスト (- item または * item)
+      // unordered list (- item / * item)
       if (/^[-*]\s+/.test(line)) {
         const item = line.replace(/^[-*]\s+/, "");
         if (listType === "ul" || listType === null) {
           listType = "ul";
           listBuffer.push(item);
         } else {
-          // 前のolが閉じられていない場合
+          // previous <ol> is not closed
           tokens.push({ type: listType, items: listBuffer });
           listBuffer = [item];
           listType = "ul";
@@ -88,7 +88,7 @@ const Markdown: React.FC<Props> = ({ markdown }) => {
         continue;
       }
 
-      // 空行ならリスト終了
+      // empty line -> end of list
       if (line.trim() === "" && listType) {
         tokens.push({ type: listType, items: listBuffer });
         listBuffer = [];
@@ -96,11 +96,11 @@ const Markdown: React.FC<Props> = ({ markdown }) => {
         continue;
       }
 
-      // 通常の段落
+      // paragraph
       tokens.push({ type: "p", content: line });
     }
 
-    // リストやコードが残っていれば最後に追加
+    // remaining lists or codes, add them to the end
     if (listType) {
       tokens.push({ type: listType, items: listBuffer });
     }
@@ -136,7 +136,7 @@ const Markdown: React.FC<Props> = ({ markdown }) => {
             return (
               <ScrollArea
                 key={i}
-                className="flex flex-nowrap overflow-x-auto bg-slate-800 rounded-sm text-amber-200"
+                className="flex flex-nowrap overflow-x-auto bg-slate-800 rounded-sm text-slate-200"
               >
                 <pre className="p-3 text-[10px]/3">
                   <div className="flex-none w-10">

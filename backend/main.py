@@ -62,7 +62,7 @@ async def stream_service_post(request: PromptRequest):
         )
         print("=== Run starting ===")
         yield StreamResponse(
-            event="started", payload={"message": "started tasks"}
+            event="started", payload={"message": "Started Tasks"}
         ).to_json_line()
 
         async for event in result.stream_events():
@@ -99,7 +99,7 @@ async def stream_service_post(request: PromptRequest):
                     pass
 
         yield StreamResponse(
-            event="done", payload={"message": "All tasks complete"}
+            event="done", payload={"message": "All Tasks Completed"}
         ).to_json_line()
 
     return StreamingResponse(content=generator(), media_type="text/event-stream")

@@ -1,8 +1,9 @@
-export type ChatStep = { status: "Unloaded" | "Loaded" | "Sended" };
+export type ChatStep = { status: "Unloaded" | "Loaded" | "Sended" | "Done" };
 export type State = { steps: ChatStep[] };
 export type Action =
   | { type: "LOAD_FILE"; index: number }
-  | { type: "SEND_PROMPT"; index: number };
+  | { type: "SEND_PROMPT"; index: number }
+  | { type: "DONE"; index: number };
 export type FileInfo = {
   filename: string;
   content: string;
@@ -30,4 +31,3 @@ export type ResponseEvent = {
 export type ResponseInfo = {
   r_event: ResponseEvent[];
 };
-
