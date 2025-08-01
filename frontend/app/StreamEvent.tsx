@@ -1,4 +1,5 @@
 import { ResponseInfo, EventTypes, StreamResponse } from "./types";
+import { formatDateTime } from "./util";
 
 interface StreamEventProps {
   status: string;
@@ -31,7 +32,7 @@ const StreamEvent = ({ status, responseInfo }: StreamEventProps) => {
     startedEvent && isStartedEvent(startedEvent.s_res)
       ? startedEvent.s_res.payload.message
       : "";
-  const startedTime = startedEvent ? startedEvent.r_time.toLocaleString() : "";
+  const startedTime = startedEvent ? formatDateTime(startedEvent.r_time) : "";
 
   // --- agent update ---
   const updateEvent = responseInfo?.r_event.find((ev) =>
@@ -41,7 +42,7 @@ const StreamEvent = ({ status, responseInfo }: StreamEventProps) => {
     updateEvent && isUpdateEvent(updateEvent.s_res)
       ? updateEvent.s_res.payload.agent_name
       : "";
-  const updateTime = updateEvent ? updateEvent.r_time.toLocaleString() : "";
+  const updateTime = updateEvent ? formatDateTime(updateEvent.r_time) : "";
 
   // --- done ---
   const doneEvent = responseInfo?.r_event.find((ev) => isDoneEvent(ev.s_res));
@@ -49,7 +50,7 @@ const StreamEvent = ({ status, responseInfo }: StreamEventProps) => {
     doneEvent && isDoneEvent(doneEvent.s_res)
       ? doneEvent.s_res.payload.message
       : "";
-  const doneTime = doneEvent ? doneEvent.r_time.toLocaleString() : "";
+  const doneTime = doneEvent ? formatDateTime(doneEvent.r_time) : "";
 
   return (
     <div>

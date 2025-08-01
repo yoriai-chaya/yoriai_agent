@@ -1,6 +1,6 @@
 "use client";
-import { ChangeEvent } from "react";
-import { Input } from "@/components/ui/input";
+import { ChangeEvent, useRef } from "react";
+import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Action, FileInfo } from "./types";
 
@@ -10,12 +10,15 @@ interface FileUploaderProps {
   dispatch: React.Dispatch<Action>;
   setFileInfo: React.Dispatch<React.SetStateAction<FileInfo[]>>;
 }
+
 const FileUploader = ({
   status,
   index,
   dispatch,
   setFileInfo,
 }: FileUploaderProps) => {
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
   const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -37,6 +40,9 @@ const FileUploader = ({
     reader.readAsText(file);
   };
 
+  const handleSelectClick = () => {
+    fileInputRef.current?.click();
+  };
   return (
     <div className="grid grid-cols-6 items-center gap-2 mb-2">
       {/* column-A */}
@@ -51,7 +57,15 @@ const FileUploader = ({
       {/* column-C,D,E */}
       {(status === "Unloaded" || status === "Loaded") && (
         <div className="col-span-3">
-          <Input type="file" onChange={handleFileChange} />
+          <input
+            type="file"
+            ref={fileInputRef}
+            className="hidden"
+            onChange={handleFileChange}
+          />
+          <Button type="button" onClick={handleSelectClick}>
+            Prompt File
+          </Button>
         </div>
       )}
       {/* column-F */}

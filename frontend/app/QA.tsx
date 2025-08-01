@@ -5,6 +5,7 @@ import { Send } from "lucide-react";
 import StreamEvent from "./StreamEvent";
 import { Action, FileInfo, PromptRequest } from "./types";
 import { ResponseInfo, StreamResponse } from "./types";
+import { formatDateTime } from "./util";
 
 interface QAProps {
   status: string;
@@ -152,7 +153,7 @@ const QA = ({
           <div className="text-gray-500 text-sm">mtime:</div>
           {/* column-C,D,E */}
           <div className="col-span-3 text-sm">
-            {fileInfo.mtime.toLocaleString()}
+            {formatDateTime(fileInfo.mtime)}
           </div>
           {/* column-F */}
           <div></div>
