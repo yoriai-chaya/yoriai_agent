@@ -1,14 +1,13 @@
-import json
 from typing import Any
 
-from agents import ItemHelpers, Runner
+from agents import Runner
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from openai.types.responses import ResponseTextDeltaEvent
 from pydantic import BaseModel
 
-from custom_agents import code_gen_agent
+from custom_agents import LocalContext, code_gen_agent
 
 
 # Model Definition
@@ -28,6 +27,11 @@ class StreamResponse(BaseModel):
         return self.model_dump_json() + "\n"
 
 
+# Constant Difinitions
+OUTPUT_DIR = "./output"
+CATEGORY_CODEGEN = "CodeGen"
+
+# FastAPI Main
 app = FastAPI()
 app.add_middleware(
     CORSMiddleware,
@@ -38,27 +42,29 @@ app.add_middleware(
 )
 
 
-# (00) FastAPI Starter
+# FastAPI Starter
 @app.get("/")
 async def root():
     return {"message": "Hello World"}
 
 
-# (01) Echo Service (for test)
+# Echo Service (for test)
 @app.post("/prompt", response_model=PromptRequest)
 async def prompt_service(request: PromptRequest):
     print(f"[Echo Service] request: {request}")
     return PromptResponse(prompt=request.prompt)
 
 
-# (02) Main Service
+# Main Service
 @app.post("/main", response_model=PromptRequest)
 async def stream_service_post(request: PromptRequest):
     print(f"[Main Service] called: {request}")
 
+    context = LocalContext(category=CATEGORY_CODEGEN, output_dir=OUTPUT_DIR)
+
     async def generator():
         result = Runner.run_streamed(
-            starting_agent=code_gen_agent, input=request.prompt
+            starting_agent=code_gen_agent, input=request.prompt, context=context
         )
         print("=== Run starting ===")
         yield StreamResponse(
@@ -84,17 +90,11 @@ async def stream_service_post(request: PromptRequest):
                 elif event.item.type == "tool_call_output_item":
                     print(f"--- Tool output : {event.item.output}")
                 elif event.item.type == "message_output_item":
-                    output_message = ItemHelpers.text_message_output(event.item)
-                    print(f"--- Message output :\n{output_message}")
-                    try:
-                        parsed = json.loads(output_message)
-                        code_str = parsed.get("code", "")
-                        yield StreamResponse(
-                            event="code", payload={"language": "tsx", "code": code_str}
-                        ).to_json_line()
-
-                    except json.JSONDecodeError:
-                        print("JSONDecodeError")
+                    print(f"context code : {context.response.code}")
+                    yield StreamResponse(
+                        event="code",
+                        payload={"language": "tsx", "code": context.response.code},
+                    ).to_json_line()
                 else:
                     pass
 
