@@ -34,6 +34,12 @@ export default function App() {
     console.log("responseInfo updated: ", responseInfo);
     scrollRightPanel();
   }, [responseInfo]);
+  useEffect(() => {
+    setFileInfo((prev) => {
+      if (prev.length >= state.steps.length) return prev;
+      return [...prev, { filename: "", content: "", mtime: new Date(0) }];
+    });
+  }, [state.steps.length]);
 
   const rightPanel = useRef<HTMLDivElement>(null);
   const leftPanel = useRef<HTMLDivElement>(null);
@@ -55,12 +61,12 @@ export default function App() {
     }
   };
 
-  if (fileInfo.length < state.steps.length) {
-    setFileInfo((prev) => [
-      ...prev,
-      { filename: "", content: "", mtime: new Date(0) },
-    ]);
-  }
+  //if (fileInfo.length < state.steps.length) {
+  //  setFileInfo((prev) => [
+  //    ...prev,
+  //    { filename: "", content: "", mtime: new Date(0) },
+  //  ]);
+  // }
 
   return (
     <div className="flex h-screen">

@@ -35,5 +35,6 @@ export type ResponseInfo = {
 export const EventTypes = {
   STARTED: "started",
   AGENT_UPDATE: "agent_update",
+  CODE: "code",
   DONE: "done",
 } as const;

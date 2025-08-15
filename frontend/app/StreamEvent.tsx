@@ -24,10 +24,10 @@ function isDoneEvent(
 }
 
 const StreamEvent = ({ status, responseInfo }: StreamEventProps) => {
+  const events = responseInfo?.r_event ?? [];
+
   // --- started ---
-  const startedEvent = responseInfo?.r_event.find((ev) =>
-    isStartedEvent(ev.s_res)
-  );
+  const startedEvent = events.find((ev) => isStartedEvent(ev.s_res));
   const startedMessage =
     startedEvent && isStartedEvent(startedEvent.s_res)
       ? startedEvent.s_res.payload.message
@@ -35,15 +35,13 @@ const StreamEvent = ({ status, responseInfo }: StreamEventProps) => {
   const startedTime = startedEvent ? formatDateTime(startedEvent.r_time) : "";
 
   // --- agent update ---
-  const agentUpdates = responseInfo.r_event.filter((event) =>
-    isUpdateEvent(event.s_res)
-  );
-  if (agentUpdates.length === 0) {
-    return null;
-  }
+  const agentUpdates = events.filter((event) => isUpdateEvent(event.s_res));
+  //if (agentUpdates.length === 0) {
+  //  return null;
+  //}
 
   // --- done ---
-  const doneEvent = responseInfo?.r_event.find((ev) => isDoneEvent(ev.s_res));
+  const doneEvent = events.find((ev) => isDoneEvent(ev.s_res));
   const doneMessage =
     doneEvent && isDoneEvent(doneEvent.s_res)
       ? doneEvent.s_res.payload.message

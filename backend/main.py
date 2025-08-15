@@ -1,39 +1,26 @@
-from typing import Any
+import asyncio
+import json
+from typing import Dict
+from uuid import uuid4
 
-from agents import Runner
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse
-from openai.types.responses import ResponseTextDeltaEvent
-from pydantic import BaseModel
+from fastapi.responses import JSONResponse, StreamingResponse
 
+from base import EventType, LocalContext, PromptRequest, PromptResponse
+from check_code import check_gen_code
 from config import get_settings
-from custom_agents import LocalContext, code_gen_agent
+from create_code import gen_code
 from logger import logger
-
-
-# Model Definition
-class PromptRequest(BaseModel):
-    prompt: str
-
-
-class PromptResponse(BaseModel):
-    prompt: str
-
-
-class StreamResponse(BaseModel):
-    event: str
-    payload: dict[str, Any]
-
-    def to_json_line(self) -> str:
-        return self.model_dump_json() + "\n"
-
 
 # Constant Difinitions
 CATEGORY_CODEGEN = "CodeGen"
 
 # Settings
 settings = get_settings()
+
+# Session Store
+sessions: Dict[str, str] = {}
 
 # FastAPI Main
 logger.info("Yori-AI start")
@@ -61,53 +48,77 @@ async def prompt_service(request: PromptRequest):
     return PromptResponse(prompt=request.prompt)
 
 
-# Main Service
-@app.post("/main", response_model=PromptRequest)
-async def stream_service_post(request: PromptRequest):
-    logger.info(f"[Main] request: {request}")
+# Create Session
+@app.post("/main")
+async def create_session(request: PromptRequest):
+    logger.info(f"[Main] create session request: {request}")
+    session_id = str(uuid4())
+    sessions[session_id] = request.prompt
+    logger.debug(f"session_id: {session_id}")
+    return JSONResponse({"session_id": session_id})
 
-    context = LocalContext(category=CATEGORY_CODEGEN, output_dir=settings.output_dir)
+
+# Main Service
+@app.get("/main/stream/{session_id}")
+async def stream_service_get(session_id: str):
+    logger.info("[Main] stream_service_get called")
+    if session_id not in sessions:
+        raise HTTPException(status_code=404, detail="session not found")
+
+    prompt = sessions.pop(session_id)
+    context = LocalContext(
+        category=CATEGORY_CODEGEN, output_dir=settings.output_dir, gen_code_filepath=""
+    )
+
+    async def sse_event(event_name: str, payload: dict) -> str:
+        return (
+            f"event: {event_name}\ndata: {json.dumps(payload, ensure_ascii=False)}\n\n"
+        )
 
     async def generator():
-        result = Runner.run_streamed(
-            starting_agent=code_gen_agent, input=request.prompt, context=context
-        )
-        logger.debug("Agents starting ...")
-        yield StreamResponse(
-            event="started", payload={"message": "Started Tasks"}
-        ).to_json_line()
+        # Heartbeat
+        async def heartbeat():
+            while True:
+                yield ": keep-alive\n\n"  # SSE Comment Frame
+                await asyncio.sleep(15)
 
-        async for event in result.stream_events():
-            if event.type == "raw_response_event":
-                if isinstance(event.data, ResponseTextDeltaEvent):
-                    # print(f"token: {event.data.delta}")
-                    # delta_text = event.data.delta
-                    # yield delta_text
-                    pass
-            elif event.type == "agent_updated_stream_event":
-                logger.debug(f"Agent updated: {event.new_agent.name}")
-                agent_name = event.new_agent.name
-                yield StreamResponse(
-                    event="agent_update", payload={"agent_name": agent_name}
-                ).to_json_line()
-            elif event.type == "run_item_stream_event":
-                if event.item.type == "tool_call_item":
-                    logger.debug("Event: tool_call_item")
-                elif event.item.type == "tool_call_output_item":
-                    logger.debug(f"Event: tool_call_output_item : {event.item.output}")
-                elif event.item.type == "message_output_item":
-                    logger.debug("Event: message_output_item")
-                    logger.debug(f"context code: {context.response.code}")
-                    yield StreamResponse(
-                        event="code",
-                        payload={"language": "tsx", "code": context.response.code},
-                    ).to_json_line()
-                else:
-                    pass
+        hb = heartbeat()
+        yield await hb.__anext__()
+
+        # Start
+        logger.debug("Agents starting ...")
+        yield await sse_event(EventType.STARTED, {"message": "Started Tasks"})
+
+        # Create Code
+        async for line in gen_code(
+            request=PromptRequest(prompt=prompt), context=context
+        ):
+            try:
+                data = json.loads(line)
+                yield await sse_event(data["event"], data.get("payload", {}))
+            except Exception as e:
+                logger.debug(f"Invalid JSON from gen_code: {e}")
+
+        # Check Code
+        async for line in check_gen_code(
+            request=PromptRequest(prompt=prompt), context=context
+        ):
+            try:
+                data = json.loads(line)
+                yield await sse_event(data["event"], data.get("payload", {}))
+            except Exception as e:
+                logger.debug(f"Invalid JSON from check_gen_code: {e}")
+
+        # Done
+        yield await sse_event(EventType.DONE, {"message": "All Tasks Completed"})
 
         logger.debug("All Tasks Completed")
-        yield StreamResponse(
-            event="done", payload={"message": "All Tasks Completed"}
-        ).to_json_line()
 
-    return StreamingResponse(content=generator(), media_type="text/event-stream")
+    headers = {
+        "Cache-Control": "no-cache, no-transform",
+        "Connection": "keep-alive",
+        "Access-Control-Allow-Origin": "*",
+    }
+    return StreamingResponse(
+        content=generator(), media_type="text/event-stream", headers=headers
+    )

@@ -4,8 +4,9 @@ import { Button } from "@/components/ui/button";
 import { Send } from "lucide-react";
 import StreamEvent from "./StreamEvent";
 import { Action, FileInfo, PromptRequest } from "./types";
-import { ResponseInfo, StreamResponse } from "./types";
+import { ResponseInfo, StreamResponse, EventTypes } from "./types";
 import { formatDateTime } from "./util";
+import { useRef } from "react";
 
 interface QAProps {
   status: string;
@@ -24,103 +25,120 @@ const QA = ({
   setResponseInfo,
   responseInfo,
 }: QAProps) => {
+  // useRef
+  const esRef = useRef<EventSource | null>(null);
+
+  // setEvent
+  const setEvent = (sres: StreamResponse, index: number) => {
+    console.log("setEvent called");
+    setResponseInfo((prev) => {
+      const updated = [...prev];
+      const prevEvents = updated[index]?.r_event ?? [];
+      updated[index] = {
+        r_event: [
+          ...prevEvents,
+          {
+            s_res: sres,
+            r_time: new Date(),
+          },
+        ],
+      };
+      return updated;
+    });
+  };
+
+  // sendPrompt
   const sendPrompt = async () => {
     console.log("sendPrompt called");
-    const requestBody: PromptRequest = { prompt: fileInfo.content };
+    if (esRef.current) {
+      // Prevent duplicate
+      console.log("prevent duplicate");
+      esRef.current.close();
+      esRef.current = null;
+    }
     try {
-      const response = await fetch("http://localhost:8000/main", {
+      // Create Session
+      const requestBody: PromptRequest = { prompt: fileInfo.content };
+      const res = await fetch("http://localhost:8000/main", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(requestBody),
       });
-      if (!response.body) {
-        console.log("fetch response error");
-        return;
-      }
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder();
-      let partial = "";
+      if (!res.ok) throw new Error(`create session failed: ${res.status}`);
+      const { session_id } = await res.json();
+      if (!session_id) throw new Error("no session_id");
+      console.log(`session_id: ${session_id}`);
 
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) {
-          dispatch({ type: "DONE", index });
-          break;
-        }
+      // Starting subscribing to SSE
+      const url = `http://localhost:8000/main/stream/${session_id}`;
+      console.log("new EventSource");
+      const es = new EventSource(url, { withCredentials: false });
+      console.log(`es : ${es}`);
 
-        partial += decoder.decode(value, { stream: true });
-        const lines = partial.split("\n");
-        partial = lines.pop() ?? "";
+      // Listen "started"
+      es.addEventListener(EventTypes.STARTED, (e) => {
+        console.log("- started event -");
+        const data = JSON.parse((e as MessageEvent).data);
+        console.log(`data: ${data}`);
+        console.log("dispatch send_prompt");
+        dispatch({ type: "SEND_PROMPT", index });
+        const sres: StreamResponse = {
+          event: EventTypes.STARTED,
+          payload: data,
+        };
+        setResponseInfo((prev) => {
+          const updated = [...prev];
+          updated[index] = {
+            r_event: [
+              {
+                s_res: sres,
+                r_time: new Date(),
+              },
+            ],
+          };
+          return updated;
+        });
+      });
 
-        for (const line of lines) {
-          if (!line.trim()) continue;
+      // Listen "code"
+      es.addEventListener(EventTypes.CODE, (e) => {
+        console.log("- code event -");
+        const data = JSON.parse((e as MessageEvent).data);
+        const sres: StreamResponse = {
+          event: EventTypes.CODE,
+          payload: data,
+        };
+        setEvent(sres, index);
+      });
 
-          try {
-            const data: StreamResponse = JSON.parse(line.trim());
-            switch (data.event) {
-              case "started":
-                console.log(`Started: ${data.payload.message}`);
-                dispatch({ type: "SEND_PROMPT", index });
-                const event_time = new Date();
-                setResponseInfo((prev) => {
-                  const updated = [...prev];
-                  updated[index] = {
-                    r_event: [{ s_res: data, r_time: event_time }],
-                  };
-                  return updated;
-                });
-                break;
-              case "agent_update":
-                console.log(`Agent updated to ${data.payload.agent_name}`);
-                const update_time = new Date();
-                setResponseInfo((prev) => {
-                  const updated = [...prev];
-                  const prevEvents = updated[index]?.r_event ?? [];
-                  updated[index] = {
-                    r_event: [
-                      ...prevEvents,
-                      { s_res: data, r_time: update_time },
-                    ],
-                  };
-                  return updated;
-                });
-                break;
-              case "code":
-                console.log(`code: `);
-                const code_time = new Date();
-                setResponseInfo((prev) => {
-                  const updated = [...prev];
-                  const prevEvents = updated[index]?.r_event ?? [];
-                  updated[index] = {
-                    r_event: [
-                      ...prevEvents,
-                      { s_res: data, r_time: code_time },
-                    ],
-                  };
-                  return updated;
-                });
-                break;
-              case "done":
-                console.log(`Done: ${data.payload.message}`);
-                const done_time = new Date();
-                setResponseInfo((prev) => {
-                  const updated = [...prev];
-                  const prevEvents = updated[index]?.r_event ?? [];
-                  updated[index] = {
-                    r_event: [
-                      ...prevEvents,
-                      { s_res: data, r_time: done_time },
-                    ],
-                  };
-                  return updated;
-                });
-                break;
-            }
-          } catch (e) {
-            console.log("Failed to parse stream line", line, e);
-          }
-        }
-      }
+      // Listen "agent_update"
+      es.addEventListener(EventTypes.AGENT_UPDATE, (e) => {
+        console.log("- agent_update event -");
+        const data = JSON.parse((e as MessageEvent).data);
+        const sres: StreamResponse = {
+          event: EventTypes.AGENT_UPDATE,
+          payload: data,
+        };
+        setEvent(sres, index);
+      });
+
+      // Listen "done"
+      es.addEventListener(EventTypes.DONE, (e) => {
+        console.log("- done event -");
+        const data = JSON.parse((e as MessageEvent).data);
+        const sres: StreamResponse = {
+          event: EventTypes.DONE,
+          payload: data,
+        };
+        setEvent(sres, index);
+
+        es.close();
+        esRef.current = null;
+        console.log("dispatch done");
+        dispatch({ type: "DONE", index });
+      });
+
+      // Listen xxx
     } catch (error) {
       console.log("Error sending: ", error);
     }

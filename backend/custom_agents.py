@@ -3,34 +3,21 @@ import shutil
 import sys
 from datetime import datetime
 
-from agents import Agent, RunContextWrapper, handoff, set_default_openai_key
-from pydantic import BaseModel, ValidationError
+from agents import (
+    Agent,
+    RunContextWrapper,
+    function_tool,
+    handoff,
+    set_default_openai_key,
+)
+from pydantic import ValidationError
 
+from base import CodeCheckResult, CodeGenResponse, CodeSaveData, CodeType, LocalContext
 from config import get_settings
+from eslint_checker import run_eslint
 from logger import logger
 
-
-# Model Definitions
-class CodeType(BaseModel):
-    code: str
-
-
-class CodeSaveData(BaseModel):
-    code: str
-    directory: str
-    filename: str
-
-
-class CodeGenResponse(BaseModel):
-    result: bool
-    detail: str
-    code: str
-
-
-class LocalContext(BaseModel):
-    category: str
-    output_dir: str
-    response: CodeGenResponse | None = None
+OUTPUT_FILENAME = "eslint_result.json"
 
 
 # Callback Functions
@@ -61,6 +48,7 @@ async def on_save(ctx: RunContextWrapper[LocalContext], input_data: CodeSaveData
         result=True, detail="saved successfully", code=input_data.code
     )
     ctx.context.response = response
+    ctx.context.gen_code_filepath = file_path
     return
 
 
@@ -74,6 +62,20 @@ except ValidationError as e:
 set_default_openai_key(key=settings.openai_api_key, use_for_tracing=True)
 model = settings.openai_model
 logger.debug(f"model: {model}")
+
+
+# Function Tools
+@function_tool
+async def check_code(ctx: RunContextWrapper, filename: str) -> CodeCheckResult:
+    """Static code check of specified program file.
+
+    Args:
+        filename: check target file
+
+    """
+    result = run_eslint(filename=filename, output_filename=OUTPUT_FILENAME)
+    return result
+
 
 # Agents
 file_save_agent = Agent(
@@ -101,4 +103,18 @@ code_gen_agent = Agent[LocalContext](
     model=model,
     output_type=CodeType,
     handoffs=[save_handoff],
+)
+
+CODE_CHECK = """
+あなたはNext.jsフレームワークのアプリケーションプログラム
+の静的チェックを行う専門家です。
+指定されたプログラムファイルに記述された内容を
+check_codeツールを使って静的チェックを行います。
+"""
+code_check_agent = Agent[LocalContext](
+    name="CodeCheckAgent",
+    instructions=CODE_CHECK,
+    model=model,
+    tools=[check_code],
+    output_type=CodeCheckResult,
 )
