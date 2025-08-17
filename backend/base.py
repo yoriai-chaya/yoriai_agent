@@ -5,13 +5,11 @@ from pydantic import BaseModel
 
 
 class EventType(StrEnum):
+    STARTED = "started"
     CODE = "code"
     AGENT_UPDATE = "agent_update"
-    DELTA = "delta"
-    STARTED = "started"
     DONE = "done"
-    CHECK_CODE = "check_code"
-    SYSTEM_ERROR = "system_error"
+    CHECK_RESULT = "check_result"
 
 
 # Model Definitions
@@ -66,3 +64,4 @@ class CodeCheckResult(BaseModel):
     error_detail: str | None = None
     eslint_result: bool | None = None
     eslint_info: List[ESLintInfo] | None = None
+

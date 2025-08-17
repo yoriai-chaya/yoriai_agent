@@ -17,8 +17,6 @@ from config import get_settings
 from eslint_checker import run_eslint
 from logger import logger
 
-OUTPUT_FILENAME = "eslint_result.json"
-
 
 # Callback Functions
 async def on_save(ctx: RunContextWrapper[LocalContext], input_data: CodeSaveData):
@@ -73,7 +71,7 @@ async def check_code(ctx: RunContextWrapper, filename: str) -> CodeCheckResult:
         filename: check target file
 
     """
-    result = run_eslint(filename=filename, output_filename=OUTPUT_FILENAME)
+    result = run_eslint(filename=filename)
     return result
 
 

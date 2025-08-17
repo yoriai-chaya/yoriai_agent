@@ -79,7 +79,7 @@ const QA = ({
       es.addEventListener(EventTypes.STARTED, (e) => {
         console.log("- started event -");
         const data = JSON.parse((e as MessageEvent).data);
-        console.log(`data: ${data}`);
+        console.log(`data: ${JSON.stringify(data, null, 2)}`);
         console.log("dispatch send_prompt");
         dispatch({ type: "SEND_PROMPT", index });
         const sres: StreamResponse = {
@@ -104,6 +104,7 @@ const QA = ({
       es.addEventListener(EventTypes.CODE, (e) => {
         console.log("- code event -");
         const data = JSON.parse((e as MessageEvent).data);
+        console.log(`data: ${JSON.stringify(data, null, 2)}`);
         const sres: StreamResponse = {
           event: EventTypes.CODE,
           payload: data,
@@ -115,8 +116,21 @@ const QA = ({
       es.addEventListener(EventTypes.AGENT_UPDATE, (e) => {
         console.log("- agent_update event -");
         const data = JSON.parse((e as MessageEvent).data);
+        console.log(`data: ${JSON.stringify(data, null, 2)}`);
         const sres: StreamResponse = {
           event: EventTypes.AGENT_UPDATE,
+          payload: data,
+        };
+        setEvent(sres, index);
+      });
+
+      // Listen "check_result"
+      es.addEventListener(EventTypes.CHECK_RESULT, (e) => {
+        console.log("- check_result event -");
+        const data = JSON.parse((e as MessageEvent).data);
+        console.log(`data: ${JSON.stringify(data, null, 2)}`);
+        const sres: StreamResponse = {
+          event: EventTypes.CHECK_RESULT,
           payload: data,
         };
         setEvent(sres, index);
@@ -126,6 +140,7 @@ const QA = ({
       es.addEventListener(EventTypes.DONE, (e) => {
         console.log("- done event -");
         const data = JSON.parse((e as MessageEvent).data);
+        console.log(`data: ${JSON.stringify(data, null, 2)}`);
         const sres: StreamResponse = {
           event: EventTypes.DONE,
           payload: data,
