@@ -12,6 +12,7 @@ class Settings(BaseSettings):
     openai_model: str = "gpt-4o-mini"
     log_dir: str = "log"
     output_dir: str = "output"
+    debug: bool = False
 
     model_config = SettingsConfigDict(
         env_file=os.path.join(os.path.dirname(__file__), ".env")
