@@ -58,6 +58,15 @@ async def create_session(request: PromptRequest):
     return JSONResponse({"session_id": session_id})
 
 
+# for Debug
+async def wait_for_console_input() -> bool:
+    loop = asyncio.get_event_loop()
+    user_input = await loop.run_in_executor(
+        None, input, 'Press Enter "y" to continue: '
+    )
+    return user_input.strip().lower() == "y"
+
+
 # Main Service
 @app.get("/main/stream/{session_id}")
 async def stream_service_get(session_id: str):
@@ -98,6 +107,12 @@ async def stream_service_get(session_id: str):
                 yield await sse_event(data["event"], data.get("payload", {}))
             except Exception as e:
                 logger.debug(f"Invalid JSON from gen_code: {e}")
+
+        # Wait for console input (for debug)
+        if settings.debug:
+            logger.debug("[debug] stop")
+            await wait_for_console_input()
+            logger.debug("[debug] continue")
 
         # Check Code
         async for line in check_gen_code(

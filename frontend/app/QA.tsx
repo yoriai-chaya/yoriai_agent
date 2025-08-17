@@ -28,6 +28,9 @@ const QA = ({
   // useRef
   const esRef = useRef<EventSource | null>(null);
 
+  // Environments
+  const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
+
   // setEvent
   const setEvent = (sres: StreamResponse, index: number) => {
     console.log("setEvent called");
@@ -59,7 +62,7 @@ const QA = ({
     try {
       // Create Session
       const requestBody: PromptRequest = { prompt: fileInfo.content };
-      const res = await fetch("http://localhost:8000/main", {
+      const res = await fetch(`${API_BASE}/main`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(requestBody),
@@ -70,7 +73,7 @@ const QA = ({
       console.log(`session_id: ${session_id}`);
 
       // Starting subscribing to SSE
-      const url = `http://localhost:8000/main/stream/${session_id}`;
+      const url = `${API_BASE}/main/stream/${session_id}`;
       console.log("new EventSource");
       const es = new EventSource(url, { withCredentials: false });
       console.log(`es : ${es}`);
@@ -152,8 +155,6 @@ const QA = ({
         console.log("dispatch done");
         dispatch({ type: "DONE", index });
       });
-
-      // Listen xxx
     } catch (error) {
       console.log("Error sending: ", error);
     }
