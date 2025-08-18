@@ -5,7 +5,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import FileUploader from "./FileUploader";
 import QA from "./QA";
 import ShowPrompt from "./ShowPrompt";
-import ShowResponse from "./ShowResponse";
+import StreamDetail from "./StreamDetail";
 import { State, FileInfo, ResponseInfo } from "./types";
 import { reducer } from "./reducer";
 
@@ -61,13 +61,6 @@ export default function App() {
     }
   };
 
-  //if (fileInfo.length < state.steps.length) {
-  //  setFileInfo((prev) => [
-  //    ...prev,
-  //    { filename: "", content: "", mtime: new Date(0) },
-  //  ]);
-  // }
-
   return (
     <div className="flex h-screen">
       {/* Left-Panel */}
@@ -110,10 +103,9 @@ export default function App() {
                 status={step.status}
                 fileInfo={fileInfo}
               />
-              <ShowResponse
-                index={index}
+              <StreamDetail
                 status={step.status}
-                responseInfo={responseInfo}
+                responseInfo={responseInfo[index]}
               />
             </div>
           ))}

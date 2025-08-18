@@ -35,7 +35,11 @@ async def gen_code(request: PromptRequest, context: LocalContext):
                     # logger.debug(f"context code: {context.response.code}")
                     yield StreamResponse(
                         event=EventType.CODE,
-                        payload={"language": "tsx", "code": context.response.code},
+                        payload={
+                            "language": "tsx",
+                            "code": context.response.code,
+                            "file_path": context.gen_code_filepath,
+                        },
                     ).to_json_line()
             else:
                 pass

@@ -25,7 +25,10 @@ export type CheckResultPayload = {
 
 export type StreamResponse =
   | { event: "started"; payload: { message: string } }
-  | { event: "code"; payload: { language: string; code: string } }
+  | {
+      event: "code";
+      payload: { language: string; code: string; file_path: string };
+    }
   | { event: "agent_update"; payload: { agent_name: string } }
   | { event: "done"; payload: { message: string } }
   | { event: "check_result"; payload: CheckResultPayload };
