@@ -50,10 +50,6 @@ export const EventTypes = {
   CHECK_RESULT: "check_result",
 } as const;
 
-//export type CheckResultEvent = Extract<
-//  StreamResponse,
-//  { event: typeof EventTypes.CHECK_RESULT }
-//>;
 export type CheckResultEvent = {
   event: "check_result";
   payload: CheckResultPayload;

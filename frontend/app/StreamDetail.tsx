@@ -55,8 +55,8 @@ const StreamDetail = ({ status, responseInfo }: StreamDetailProps) => {
               const filePath = sr.payload.file_path;
               return (
                 <div key={`code-${idx}`}>
-                  <div className="text-sm">{filePath}</div>
-                  <Card className="p-4 bg-gray-200 rounded-sm">
+                  <div className="text-sm pl-2">Filepath: {filePath}</div>
+                  <Card className="my-2 p-1 bg-gray-200 rounded-sm shadow-md">
                     <div className="flex overflow-x-auto">
                       <Markdown markdown={code} />
                     </div>
@@ -64,7 +64,7 @@ const StreamDetail = ({ status, responseInfo }: StreamDetailProps) => {
                 </div>
               );
             }
-            // ----- code event -----
+            // ----- check_result event -----
             if (isCheckResultEvent(sr)) {
               const checker = sr.payload.checker;
               const result = sr.payload.result;
@@ -73,11 +73,18 @@ const StreamDetail = ({ status, responseInfo }: StreamDetailProps) => {
               const detail = sr.payload.detail;
               return (
                 <div key={`check-${idx}`}>
-                  <span className="text-sm">
-                    {checker} check: {result_str}
+                  <span className="text-sm pl-2">
+                    {checker} check:{" "}
+                    {result ? (
+                      <span className="text-blue-500">{result_str}</span>
+                    ) : (
+                      <>
+                        <span className="text-red-500">{result_str}</span>
+                        <div className="text-sm pl-4">rule: {rule_id}</div>
+                        <div className="text-sm pl-4">detail: {detail}</div>
+                      </>
+                    )}
                   </span>
-                  <div>{rule_id}</div>
-                  <div>{detail}</div>
                 </div>
               );
             }

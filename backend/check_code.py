@@ -32,7 +32,7 @@ async def check_gen_code(request: PromptRequest, context: LocalContext):
                         response = StreamResponse(
                             event=EventType.CHECK_RESULT,
                             payload={
-                                "checker": "eslint",
+                                "checker": "ESLint",
                                 "result": eslint_result,
                                 "rule_id": "",
                                 "detail": "",

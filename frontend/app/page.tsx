@@ -32,6 +32,7 @@ export default function App() {
   }, [state]);
   useEffect(() => {
     console.log("responseInfo updated: ", responseInfo);
+    scrollLeftPanel();
     scrollRightPanel();
   }, [responseInfo]);
   useEffect(() => {
