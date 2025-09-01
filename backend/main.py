@@ -3,11 +3,21 @@ import json
 from typing import Dict
 from uuid import uuid4
 
+from agents.exceptions import AgentsException, ModelBehaviorError
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, StreamingResponse
 
-from base import EventType, LocalContext, PromptRequest, PromptResponse
+from base import (
+    DonePayload,
+    EventType,
+    LocalContext,
+    PromptRequest,
+    PromptResponse,
+    StartedPayload,
+    StartedStatus,
+    SystemError,
+)
 from check_code import check_gen_code
 from config import get_settings
 from create_code import gen_code
@@ -76,7 +86,10 @@ async def stream_service_get(session_id: str):
 
     prompt = sessions.pop(session_id)
     context = LocalContext(
-        category=CATEGORY_CODEGEN, output_dir=settings.output_dir, gen_code_filepath=""
+        category=CATEGORY_CODEGEN,
+        output_dir=settings.output_dir,
+        gen_code_filepath="",
+        code_check_result=True,
     )
 
     async def sse_event(event_name: str, payload: dict) -> str:
@@ -96,36 +109,87 @@ async def stream_service_get(session_id: str):
 
         # Start
         logger.debug("Agents starting ...")
-        yield await sse_event(EventType.STARTED, {"message": "Started Tasks"})
+        started_payload = StartedPayload(
+            status=StartedStatus.STARTED, message="Started Tasks"
+        )
+        yield await sse_event(EventType.STARTED, started_payload.model_dump())
 
-        # Create Code
-        async for line in gen_code(
-            request=PromptRequest(prompt=prompt), context=context
-        ):
+        # Make Payload (for Completed)
+        final_payload = DonePayload(status="Completed", message="All Tasks Completed")
+
+        # Code Gen Loop
+        for i in range(settings.code_gen_retry):
+            logger.debug(f"Code Gen Loop [{i}]")
+
             try:
-                data = json.loads(line)
-                yield await sse_event(data["event"], data.get("payload", {}))
+                # Create Code
+                async for line in gen_code(
+                    request=PromptRequest(prompt=prompt), context=context
+                ):
+                    try:
+                        data = json.loads(line)
+                        yield await sse_event(data["event"], data.get("payload", {}))
+                    except Exception as e:
+                        logger.debug(f"Invalid JSON from gen_code: {e}")
+            except ModelBehaviorError as e:
+                logger.warning(f"ModelBehaviorError detected: {e}")
+                error_payload = SystemError(error="ModelBehaviorError", detail=str(e))
+                yield await sse_event(
+                    EventType.SYSTEM_ERROR, error_payload.model_dump()
+                )
+                if i == settings.code_gen_retry - 1:
+                    final_payload = DonePayload(
+                        status="Failed", message="Retry Limit exceeded"
+                    )
+                else:
+                    continue
+            except AgentsException as e:
+                logger.error(f"AgentsException detected: {e}")
+                error_payload = SystemError(error="AgentsException", detail=str(e))
+                yield await sse_event(
+                    EventType.SYSTEM_ERROR, error_payload.model_dump()
+                )
+                final_payload = DonePayload(
+                    status="Failed", message="Internal error occurred"
+                )
+                break
             except Exception as e:
-                logger.debug(f"Invalid JSON from gen_code: {e}")
+                logger.error(f"Unexpected error: {e}")
+                error_payload = SystemError(error="Unexpected error", detail=str(e))
+                yield await sse_event(
+                    EventType.SYSTEM_ERROR, error_payload.model_dump()
+                )
+                final_payload = DonePayload(
+                    status="Failed", message="Internal error occurred"
+                )
+                break
 
-        # Wait for console input (for debug)
-        if settings.debug:
-            logger.debug("[debug] stop")
-            await wait_for_console_input()
-            logger.debug("[debug] continue")
+            # Wait for console input (for debug)
+            if settings.debug:
+                logger.debug("[debug] stop")
+                should_continue = await wait_for_console_input()
+                if not should_continue:
+                    logger.debug("[debug] user stop")
+                    break
+                logger.debug("[debug] continue")
 
-        # Check Code
-        async for line in check_gen_code(
-            request=PromptRequest(prompt=prompt), context=context
-        ):
-            try:
-                data = json.loads(line)
-                yield await sse_event(data["event"], data.get("payload", {}))
-            except Exception as e:
-                logger.debug(f"Invalid JSON from check_gen_code: {e}")
+            # Check Code
+            async for line in check_gen_code(
+                request=PromptRequest(prompt=prompt), context=context
+            ):
+                try:
+                    data = json.loads(line)
+                    yield await sse_event(data["event"], data.get("payload", {}))
+                except Exception as e:
+                    logger.debug(f"Invalid JSON from check_gen_code: {e}")
+
+            # Loop Judge
+            if context.code_check_result:
+                break
 
         # Done
-        yield await sse_event(EventType.DONE, {"message": "All Tasks Completed"})
+        # yield await sse_event(EventType.DONE, {"message": "All Tasks Completed"})
+        yield await sse_event(EventType.DONE, final_payload.model_dump())
 
         logger.debug("All Tasks Completed")
 

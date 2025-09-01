@@ -4,6 +4,7 @@ import {
   StreamResponse,
   Emoji,
   ResponseEvent,
+  ResponseStatus,
 } from "./types";
 import { formatDateTime } from "./util";
 
@@ -33,6 +34,11 @@ function isDoneEvent(
 ): event is Extract<StreamResponse, { event: typeof EventTypes.DONE }> {
   return event.event === EventTypes.DONE;
 }
+function isSystemErrorEvent(
+  event: StreamResponse
+): event is Extract<StreamResponse, { event: typeof EventTypes.SYSTEM_ERROR }> {
+  return event.event === EventTypes.SYSTEM_ERROR;
+}
 
 // StreamEvent Function
 const StreamEvent = ({ status, responseInfo }: StreamEventProps) => {
@@ -53,7 +59,7 @@ const StreamEvent = ({ status, responseInfo }: StreamEventProps) => {
                     <div></div>
                     <div className="col-span-3 text-base">
                       <span className="text-[12px] pr-2">{emoji}</span>
-                      {sr.payload.message}
+                      {sr.payload.status}
                     </div>
                     <div className="col-span-2 text-sm text-gray-500">
                       {formatDateTime(ev.r_time)}
@@ -115,14 +121,36 @@ const StreamEvent = ({ status, responseInfo }: StreamEventProps) => {
 
             // ----- done event -----
             if (isDoneEvent(sr)) {
-              const emoji = Emoji.BLUE_CIRCLE;
+              let emoji = Emoji.BLUE_CIRCLE;
+              if (sr.payload.status === ResponseStatus.FAILED) {
+                emoji = Emoji.RED_CIRCLE;
+              }
               return (
                 <div key={`done-${idx}`}>
                   <div className="grid grid-cols-6 items-center">
                     <div></div>
                     <div className="col-span-3 text-base">
                       <span className="text-[12px] pr-2">{emoji}</span>
-                      {sr.payload.message}
+                      {sr.payload.status}
+                    </div>
+                    <div className="col-span-2 text-sm text-gray-500">
+                      {formatDateTime(ev.r_time)}
+                    </div>
+                  </div>
+                </div>
+              );
+            }
+            // ----- system-error event -----
+            if (isSystemErrorEvent(sr)) {
+              const emoji = Emoji.RED_CIRCLE;
+              const error = sr.payload.error;
+              return (
+                <div key={`system-error-${idx}`}>
+                  <div className="grid grid-cols-6 items-center">
+                    <div></div>
+                    <div className="col-span-3 text-base ml-5">
+                      <span className="text-[12px] pr-1">{emoji}</span>
+                      <span>{error}</span>
                     </div>
                     <div className="col-span-2 text-sm text-gray-500">
                       {formatDateTime(ev.r_time)}

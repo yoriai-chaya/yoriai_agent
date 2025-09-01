@@ -155,6 +155,18 @@ const QA = ({
         console.log("dispatch done");
         dispatch({ type: "DONE", index });
       });
+
+      // Listen "system-error"
+      es.addEventListener(EventTypes.SYSTEM_ERROR, (e) => {
+        console.log("- system-error event -");
+        const data = JSON.parse((e as MessageEvent).data);
+        console.log(`data: ${JSON.stringify(data, null, 2)}`);
+        const sres: StreamResponse = {
+          event: EventTypes.SYSTEM_ERROR,
+          payload: data,
+        };
+        setEvent(sres, index);
+      });
     } catch (error) {
       console.log("Error sending: ", error);
     }

@@ -24,14 +24,15 @@ export type CheckResultPayload = {
 };
 
 export type StreamResponse =
-  | { event: "started"; payload: { message: string } }
+  | { event: "started"; payload: { status: string; message: string } }
   | {
       event: "code";
       payload: { language: string; code: string; file_path: string };
     }
   | { event: "agent_update"; payload: { agent_name: string } }
-  | { event: "done"; payload: { message: string } }
-  | { event: "check_result"; payload: CheckResultPayload };
+  | { event: "done"; payload: { status: string; message: string } }
+  | { event: "check_result"; payload: CheckResultPayload }
+  | { event: "system_error"; payload: { error: string; detail: string } };
 
 export type ResponseEvent = {
   s_res: StreamResponse;
@@ -48,6 +49,7 @@ export const EventTypes = {
   AGENT_UPDATE: "agent_update",
   DONE: "done",
   CHECK_RESULT: "check_result",
+  SYSTEM_ERROR: "system_error",
 } as const;
 
 export type CheckResultEvent = {
@@ -65,4 +67,9 @@ export enum Emoji {
   RED_CIRCLE = "\u{1F534}", // 🔴
   BLUE_CIRCLE = "\u{1F535}", // 🔵
   GREEN_CIRCLE = "\u{1F7E2}", // 🟢
+}
+
+export enum ResponseStatus {
+  COMPLETED = "Completed",
+  FAILED = "Failed",
 }

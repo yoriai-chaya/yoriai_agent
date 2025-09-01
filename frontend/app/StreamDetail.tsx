@@ -28,6 +28,11 @@ function isCheckResultEvent(
 ): event is Extract<StreamResponse, { event: typeof EventTypes.CHECK_RESULT }> {
   return event.event === EventTypes.CHECK_RESULT;
 }
+function isSystemErrorEvent(
+  event: StreamResponse
+): event is Extract<StreamResponse, { event: typeof EventTypes.SYSTEM_ERROR }> {
+  return event.event === EventTypes.SYSTEM_ERROR;
+}
 
 // StreamDetail Function
 const StreamDetail = ({ status, responseInfo }: StreamDetailProps) => {
@@ -85,6 +90,19 @@ const StreamDetail = ({ status, responseInfo }: StreamDetailProps) => {
                       </>
                     )}
                   </span>
+                </div>
+              );
+            }
+            // ----- system-error event -----
+            if (isSystemErrorEvent(sr)) {
+              const error = sr.payload.error;
+              const detail = sr.payload.detail;
+              return (
+                <div key={`system-error-${idx}`}>
+                  <div className="text-sm pl-2">
+                    <div>{error}</div>
+                    <div>{detail}</div>
+                  </div>
                 </div>
               );
             }

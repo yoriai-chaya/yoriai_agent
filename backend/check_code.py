@@ -29,6 +29,7 @@ async def check_gen_code(request: PromptRequest, context: LocalContext):
                 if isinstance(output, CodeCheckResult):
                     eslint_result = output.eslint_result
                     if eslint_result:
+                        context.code_check_result = True
                         response = StreamResponse(
                             event=EventType.CHECK_RESULT,
                             payload={
@@ -40,6 +41,7 @@ async def check_gen_code(request: PromptRequest, context: LocalContext):
                         )
                         yield response.to_json_line()
                     else:
+                        context.code_check_result = False
                         eslint_infos = output.eslint_info or []
                         for eslint_info in eslint_infos:
                             response = StreamResponse(

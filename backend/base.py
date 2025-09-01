@@ -10,6 +10,16 @@ class EventType(StrEnum):
     AGENT_UPDATE = "agent_update"
     DONE = "done"
     CHECK_RESULT = "check_result"
+    SYSTEM_ERROR = "system_error"
+
+
+class StartedStatus(StrEnum):
+    STARTED = "Started"
+
+
+class DoneStatus(StrEnum):
+    COMPLETED = "Completed"
+    FAILED = "Failed"
 
 
 # Model Definitions
@@ -50,6 +60,7 @@ class LocalContext(BaseModel):
     output_dir: str
     response: CodeGenResponse | None = None
     gen_code_filepath: str
+    code_check_result: bool
 
 
 class ESLintInfo(BaseModel):
@@ -65,3 +76,17 @@ class CodeCheckResult(BaseModel):
     eslint_result: bool | None = None
     eslint_info: List[ESLintInfo] | None = None
 
+
+class SystemError(BaseModel):
+    error: str
+    detail: str | None = None
+
+
+class StartedPayload(BaseModel):
+    status: StartedStatus
+    message: str
+
+
+class DonePayload(BaseModel):
+    status: DoneStatus
+    message: str
