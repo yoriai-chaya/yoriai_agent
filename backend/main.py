@@ -187,6 +187,12 @@ async def stream_service_get(session_id: str):
             if context.code_check_result:
                 break
 
+            # Retry Limit Check
+            if i == settings.code_gen_retry - 1:
+                final_payload = DonePayload(
+                    status="Failed", message="Retry Limit exceeded"
+                )
+
         # Done
         # yield await sse_event(EventType.DONE, {"message": "All Tasks Completed"})
         yield await sse_event(EventType.DONE, final_payload.model_dump())
