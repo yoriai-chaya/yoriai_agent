@@ -61,6 +61,7 @@ class LocalContext(BaseModel):
     response: CodeGenResponse | None = None
     gen_code_filepath: str
     code_check_result: bool
+    add_prompts: List[str]
 
 
 class ESLintInfo(BaseModel):

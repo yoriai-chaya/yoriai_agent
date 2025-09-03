@@ -44,6 +44,9 @@ async def check_gen_code(request: PromptRequest, context: LocalContext):
                         context.code_check_result = False
                         eslint_infos = output.eslint_info or []
                         for eslint_info in eslint_infos:
+                            desc = (eslint_info.description or "").strip()
+                            if desc and desc not in context.add_prompts:
+                                context.add_prompts.append(desc)
                             response = StreamResponse(
                                 event=EventType.CHECK_RESULT,
                                 payload={

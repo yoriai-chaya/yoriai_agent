@@ -10,6 +10,7 @@ from fastapi.responses import JSONResponse, StreamingResponse
 
 from base import (
     DonePayload,
+    DoneStatus,
     EventType,
     LocalContext,
     PromptRequest,
@@ -90,6 +91,7 @@ async def stream_service_get(session_id: str):
         output_dir=settings.output_dir,
         gen_code_filepath="",
         code_check_result=True,
+        add_prompts=[],
     )
 
     async def sse_event(event_name: str, payload: dict) -> str:
@@ -97,7 +99,7 @@ async def stream_service_get(session_id: str):
             f"event: {event_name}\ndata: {json.dumps(payload, ensure_ascii=False)}\n\n"
         )
 
-    async def generator():
+    async def generator(prompt: str):
         # Heartbeat
         async def heartbeat():
             while True:
@@ -115,7 +117,9 @@ async def stream_service_get(session_id: str):
         yield await sse_event(EventType.STARTED, started_payload.model_dump())
 
         # Make Payload (for Completed)
-        final_payload = DonePayload(status="Completed", message="All Tasks Completed")
+        final_payload = DonePayload(
+            status=DoneStatus.COMPLETED, message="All Tasks Completed"
+        )
 
         # Code Gen Loop
         for i in range(settings.code_gen_retry):
@@ -123,6 +127,12 @@ async def stream_service_get(session_id: str):
 
             try:
                 # Create Code
+                if not len(context.add_prompts) == 0:
+                    # extend prompt
+                    for add_prompt in context.add_prompts:
+                        prefix = "- "
+                        prompt = f"{prompt}\n{prefix}{add_prompt}\n"
+                        logger.debug(f"additional prompt: {prompt}")
                 async for line in gen_code(
                     request=PromptRequest(prompt=prompt), context=context
                 ):
@@ -139,7 +149,7 @@ async def stream_service_get(session_id: str):
                 )
                 if i == settings.code_gen_retry - 1:
                     final_payload = DonePayload(
-                        status="Failed", message="Retry Limit exceeded"
+                        status=DoneStatus.FAILED, message="Retry Limit exceeded"
                     )
                 else:
                     continue
@@ -150,7 +160,7 @@ async def stream_service_get(session_id: str):
                     EventType.SYSTEM_ERROR, error_payload.model_dump()
                 )
                 final_payload = DonePayload(
-                    status="Failed", message="Internal error occurred"
+                    status=DoneStatus.FAILED, message="Internal error occurred"
                 )
                 break
             except Exception as e:
@@ -160,7 +170,7 @@ async def stream_service_get(session_id: str):
                     EventType.SYSTEM_ERROR, error_payload.model_dump()
                 )
                 final_payload = DonePayload(
-                    status="Failed", message="Internal error occurred"
+                    status=DoneStatus.FAILED, message="Internal error occurred"
                 )
                 break
 
@@ -190,7 +200,7 @@ async def stream_service_get(session_id: str):
             # Retry Limit Check
             if i == settings.code_gen_retry - 1:
                 final_payload = DonePayload(
-                    status="Failed", message="Retry Limit exceeded"
+                    status=DoneStatus.FAILED, message="Retry Limit exceeded"
                 )
 
         # Done
@@ -205,5 +215,7 @@ async def stream_service_get(session_id: str):
         "Access-Control-Allow-Origin": "*",
     }
     return StreamingResponse(
-        content=generator(), media_type="text/event-stream", headers=headers
+        content=generator(prompt=prompt),
+        media_type="text/event-stream",
+        headers=headers,
     )
