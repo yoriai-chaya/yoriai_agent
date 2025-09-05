@@ -1,49 +1,41 @@
-import pluginReact from 'eslint-plugin-react';
-import parser from '@typescript-eslint/parser';
-import pluginTs from '@typescript-eslint/eslint-plugin';
-import requireVariantProp from './eslint-custom-rules/require-variant-prop.js';
+import { dirname } from "path";
+import { fileURLToPath } from "url";
+import { FlatCompat } from "@eslint/eslintrc";
+import requireVariantProp from "./eslint-custom-rules/require-variant-prop.mjs";
+import noImgElement from "./eslint-custom-rules/no-img-element.mjs";
 
-/** @type {import("eslint").Linter.FlatConfig[]} */
-export default [
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+const compat = new FlatCompat({
+  baseDirectory: __dirname,
+});
+
+const eslintConfig = [
+  ...compat.extends("next/core-web-vitals", "next/typescript"),
   {
-    ignores: ['.next/**/*', 'next.config.ts'],
-  },
-  {
-    files: ['app/*.ts', 'app/*.tsx'],
-    languageOptions: {
-      parser,
-      parserOptions: {
-        ecmaVersion: 'latest',
-        sourceType: 'module',
-        ecmaFeatures: { jsx: true },
-        project: './tsconfig.json', // 必要に応じて
-      },
-    },
+    ignores: [
+      "node_modules/**",
+      ".next/**",
+      "out/**",
+      "build/**",
+      "next-env.d.ts",
+    ],
     plugins: {
-      '@typescript-eslint': pluginTs,
-      react: pluginReact,
-      'custom-rules': {
+      "custom-rules": {
         rules: {
-          'require-variant-prop': requireVariantProp,
+          "require-variant-prop": requireVariantProp,
+          "no-img-element": noImgElement,
         },
       },
     },
     rules: {
-      // TypeScript用ルール（例）
-      '@typescript-eslint/no-unused-vars': 'warn',
-
-      // React推奨ルール（必要に応じて追加）
-      'react/jsx-uses-react': 'off',
-      'react/react-in-jsx-scope': 'off',
-
-      // カスタムルール適用
-      'custom-rules/require-variant-prop': 'error',
-    },
-    settings: {
-      react: {
-        version: 'detect',
-      },
+      "custom-rules/require-variant-prop": "error",
+      "@next/next/no-img-element": "off",
+      "custom-rules/no-img-element": "error",
     },
   },
 ];
+
+export default eslintConfig;
 
