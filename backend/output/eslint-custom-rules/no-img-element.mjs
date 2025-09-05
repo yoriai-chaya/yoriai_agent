@@ -1,4 +1,4 @@
-export default {
+const noImgElementRule = {
   meta: {
     type: "problem",
     docs: {
@@ -24,3 +24,4 @@ export default {
   },
 };
 
+export default noImgElementRule;

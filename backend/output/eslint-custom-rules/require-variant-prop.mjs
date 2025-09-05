@@ -1,9 +1,9 @@
-export default {
+const requireVariantPropRule = {
   meta: {
     type: "problem",
     docs: {
       description:
-        "If the <Image> component doesn't have a size yet, add the fill property.",
+        "Use boolean fill on <Image>: write <Image fill /> instead of <Image layout='fill' /> (deprecated).",
     },
     schema: [],
     messages: {
@@ -41,3 +41,5 @@ export default {
     };
   },
 };
+
+export default requireVariantPropRule;
