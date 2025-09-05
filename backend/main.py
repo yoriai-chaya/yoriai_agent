@@ -127,14 +127,18 @@ async def stream_service_get(session_id: str):
 
             try:
                 # Create Code
-                if not len(context.add_prompts) == 0:
+                final_prompt = prompt
+                add_prompts_len = len(context.add_prompts)
+                logger.debug(f"add_prompts_len: {add_prompts_len}")
+                if not add_prompts_len == 0:
                     # extend prompt
                     for add_prompt in context.add_prompts:
+                        logger.debug(f"add_prompt : {add_prompt}")
                         prefix = "- "
-                        prompt = f"{prompt}\n{prefix}{add_prompt}\n"
-                        logger.debug(f"additional prompt: {prompt}")
+                        final_prompt = f"{final_prompt}\n{prefix}{add_prompt}\n"
+                        logger.debug(f"final_prompt: {final_prompt}")
                 async for line in gen_code(
-                    request=PromptRequest(prompt=prompt), context=context
+                    request=PromptRequest(prompt=final_prompt), context=context
                 ):
                     try:
                         data = json.loads(line)
