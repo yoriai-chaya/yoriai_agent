@@ -2,6 +2,7 @@ import os
 import shutil
 import sys
 from datetime import datetime
+from typing import List
 
 from agents import (
     Agent,
@@ -12,10 +13,35 @@ from agents import (
 )
 from pydantic import ValidationError
 
-from base import CodeCheckResult, CodeGenResponse, CodeSaveData, CodeType, LocalContext
+from base import (
+    AgentResult,
+    CodeCheckResult,
+    CodeGenResponse,
+    CodeSaveData,
+    CodeType,
+    LocalContext,
+)
 from config import get_settings
 from eslint_checker import run_eslint
 from logger import logger
+
+
+# Internal Functions
+def _backup_existing_file(target_dir: str, filename: str) -> None:
+    file_path = os.path.join(target_dir, filename)
+    if os.path.exists(file_path):
+        backup_dir = os.path.join(target_dir, "backup")
+        logger.debug(f"backup_dir: {backup_dir}")
+        os.makedirs(backup_dir, exist_ok=True)
+
+        base, ext = os.path.splitext(filename)
+        dt_str = datetime.now().strftime("%Y%m%d_%H%M%S")
+        backup_file = f"{base}_{dt_str}{ext}"
+        logger.debug(f"backup_file: {backup_file}")
+        backup_path = os.path.join(backup_dir, backup_file)
+        logger.debug(f"backup_path: {backup_path}")
+        shutil.move(file_path, backup_path)
+        logger.debug(f"Moved existing file to backup: {backup_path}")
 
 
 # Callback Functions
@@ -24,21 +50,10 @@ async def on_save(ctx: RunContextWrapper[LocalContext], input_data: CodeSaveData
     base_output = os.path.join(os.getcwd(), ctx.context.output_dir)
     target_dir = os.path.join(base_output, input_data.directory)
     os.makedirs(target_dir, exist_ok=True)
+
+    _backup_existing_file(target_dir, input_data.filename)
+
     file_path = os.path.join(target_dir, input_data.filename)
-
-    if os.path.exists(file_path):
-        backup_dir = os.path.join(target_dir, "backup")
-        logger.debug(f"backup_dir: {backup_dir}")
-        os.makedirs(backup_dir, exist_ok=True)
-
-        base, ext = os.path.splitext(input_data.filename)
-        dt_str = datetime.now().strftime("%Y%m%d_%H%M%S")
-        backup_file = f"{base}_{dt_str}{ext}"
-        logger.debug(f"backup_file: {backup_file}")
-        backup_path = os.path.join(backup_dir, backup_file)
-        logger.debug(f"backup_path: {backup_path}")
-        shutil.move(file_path, backup_path)
-
     with open(file_path, "w", encoding="utf-8") as f:
         f.write(input_data.code)
     logger.debug(f"Saved file at {file_path}")
@@ -73,6 +88,64 @@ async def check_code(ctx: RunContextWrapper, filename: str) -> CodeCheckResult:
     """
     result = run_eslint(filename=filename)
     return result
+
+
+@function_tool
+async def place_files(
+    ctx: RunContextWrapper, from_dir: str, to_dir: str, files: List[str]
+) -> AgentResult:
+    """Place Files from 'from_dir' to 'to_dir'
+
+    Args:
+        from_dir: source directory name
+        to_dir: destination directory name
+        files: files to be placed
+
+    """
+    logger.debug(
+        f"place_files called : from_dir: {from_dir}, to_dir: {to_dir}, files: {files}"
+    )
+    result = AgentResult(result=True, error_detail="")
+    try:
+        abs_from = os.path.abspath(from_dir)
+        abs_to = os.path.abspath(to_dir)
+        logger.debug(f"abs_from: {abs_from}, abs_to: {abs_to}")
+
+        if not os.path.isdir(abs_from):
+            return AgentResult(
+                result=False, error_detail=f"Cannot find source directory: {abs_from}"
+            )
+        if not os.path.isdir(abs_to):
+            return AgentResult(
+                result=False,
+                error_detail=f"Cannot find destination directory: {abs_from}",
+            )
+
+        for f in files:
+            src = os.path.normpath(os.path.join(abs_from, f))
+            logger.debug(f"src: {src}")
+            if os.path.commonpath([abs_from, src]) != abs_from:
+                return AgentResult(
+                    result=False,
+                    error_detail="Invalid file path (outside source dir)",
+                )
+            if not os.path.isfile(src):
+                return AgentResult(
+                    result=False,
+                    error_detail=f"Cannot find file: {src}",
+                )
+            dst = os.path.join(abs_to, os.path.basename(src))
+
+            _backup_existing_file(abs_to, os.path.basename(src))
+
+            logger.debug(f"dst: {dst}")
+            shutil.copy2(src, dst)
+            logger.debug(f"Copied {src} -> {dst}")
+
+        return result
+
+    except (OSError, PermissionError, shutil.Error, ValueError) as e:
+        return AgentResult(result=False, error_detail=f"Unexpected error: {e}")
 
 
 # Agents
@@ -115,4 +188,19 @@ code_check_agent = Agent[LocalContext](
     model=model,
     tools=[check_code],
     output_type=CodeCheckResult,
+)
+
+PLACE_FILES = """
+あなたはNext.jsフレームワークのアプリケーションで必要なファイル資材を
+適切なディレクトリに配置するアドミニストレータです。
+指定されたファイルを指定されたコピー元ディレクトリからコピー先
+ディレクトリに配置します。
+配置は指定されたツールを使います。
+"""
+place_files_agent = Agent[LocalContext](
+    name="PlaceFilesAgent",
+    instructions=PLACE_FILES,
+    model=model,
+    output_type=AgentResult,
+    tools=[place_files],
 )

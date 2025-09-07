@@ -139,6 +139,18 @@ const QA = ({
         setEvent(sres, index);
       });
 
+      // Listen "agent_result"
+      es.addEventListener(EventTypes.AGENT_RESULT, (e) => {
+        console.log("- agent_result event -");
+        const data = JSON.parse((e as MessageEvent).data);
+        console.log(`data: ${JSON.stringify(data, null, 2)}`);
+        const sres: StreamResponse = {
+          event: EventTypes.AGENT_RESULT,
+          payload: data,
+        };
+        setEvent(sres, index);
+      });
+
       // Listen "done"
       es.addEventListener(EventTypes.DONE, (e) => {
         console.log("- done event -");
@@ -210,7 +222,7 @@ const QA = ({
           {/* --- avatar row --- */}
           {/* column-A */}
           <div>
-            <Avatar>
+            <Avatar className="bg-yellow-100">
               <AvatarImage src="/assistant.png" />
               <AvatarFallback>As</AvatarFallback>
             </Avatar>

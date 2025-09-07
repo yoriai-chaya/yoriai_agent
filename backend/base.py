@@ -12,6 +12,7 @@ class EventType(StrEnum):
     DONE = "done"
     CHECK_RESULT = "check_result"
     SYSTEM_ERROR = "system_error"
+    AGENT_RESULT = "agent_result"
 
 
 class StartedStatus(StrEnum):
@@ -22,12 +23,15 @@ class DoneStatus(StrEnum):
     COMPLETED = "Completed"
     FAILED = "Failed"
 
+
 class PromptCategory(StrEnum):
     GEN_CODE = "GenCode"
     PLACE_FILES = "PlaceFiles"
 
+
 class PromptHeaderKey(StrEnum):
     CATEGORY = "Category"
+
 
 # Model Definitions
 class PromptRequest(BaseModel):
@@ -98,3 +102,17 @@ class StartedPayload(BaseModel):
 class DonePayload(BaseModel):
     status: DoneStatus
     message: str
+
+
+class AgentUpdatePayload(BaseModel):
+    agent_name: str
+
+
+class AgentResult(BaseModel):
+    result: bool
+    error_detail: str | None = None
+
+
+class AgentResultPayload(BaseModel):
+    result: bool
+    error_detail: str | None = None

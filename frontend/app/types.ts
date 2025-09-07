@@ -32,7 +32,11 @@ export type StreamResponse =
   | { event: "agent_update"; payload: { agent_name: string } }
   | { event: "done"; payload: { status: string; message: string } }
   | { event: "check_result"; payload: CheckResultPayload }
-  | { event: "system_error"; payload: { error: string; detail: string } };
+  | { event: "system_error"; payload: { error: string; detail: string } }
+  | {
+      event: "agent_result";
+      payload: { result: boolean; error_detail: string };
+    };
 
 export type ResponseEvent = {
   s_res: StreamResponse;
@@ -50,6 +54,7 @@ export const EventTypes = {
   DONE: "done",
   CHECK_RESULT: "check_result",
   SYSTEM_ERROR: "system_error",
+  AGENT_RESULT: "agent_result",
 } as const;
 
 export type CheckResultEvent = {

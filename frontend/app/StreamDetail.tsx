@@ -28,6 +28,11 @@ function isCheckResultEvent(
 ): event is Extract<StreamResponse, { event: typeof EventTypes.CHECK_RESULT }> {
   return event.event === EventTypes.CHECK_RESULT;
 }
+function isAgentResultEvent(
+  event: StreamResponse
+): event is Extract<StreamResponse, { event: typeof EventTypes.AGENT_RESULT }> {
+  return event.event === EventTypes.AGENT_RESULT;
+}
 function isSystemErrorEvent(
   event: StreamResponse
 ): event is Extract<StreamResponse, { event: typeof EventTypes.SYSTEM_ERROR }> {
@@ -93,6 +98,34 @@ const StreamDetail = ({ status, responseInfo }: StreamDetailProps) => {
                 </div>
               );
             }
+
+            // ----- agent_result event -----
+            if (isAgentResultEvent(sr)) {
+              const result = sr.payload.result;
+              const resultStr = result ? "OK" : "Error";
+              const error_detail = sr.payload.error_detail;
+              return (
+                <div key={`agent-result-${idx}`}>
+                  <span className="text-sm pl-2">
+                    {result ? (
+                      <>
+                        <span>result: </span>
+                        <span className="text-blue-500">{resultStr}</span>
+                      </>
+                    ) : (
+                      <>
+                        <span>result: </span>
+                        <span className="text-red-500">{resultStr}</span>
+                        <div className="text-sm pl-4">
+                          detail: {error_detail}
+                        </div>
+                      </>
+                    )}
+                  </span>
+                </div>
+              );
+            }
+
             // ----- system-error event -----
             if (isSystemErrorEvent(sr)) {
               const error = sr.payload.error;
