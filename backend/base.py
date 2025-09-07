@@ -4,6 +4,7 @@ from typing import Any, List
 from pydantic import BaseModel
 
 
+# Enum Definitions
 class EventType(StrEnum):
     STARTED = "started"
     CODE = "code"
@@ -21,6 +22,12 @@ class DoneStatus(StrEnum):
     COMPLETED = "Completed"
     FAILED = "Failed"
 
+class PromptCategory(StrEnum):
+    GEN_CODE = "GenCode"
+    PLACE_FILES = "PlaceFiles"
+
+class PromptHeaderKey(StrEnum):
+    CATEGORY = "Category"
 
 # Model Definitions
 class PromptRequest(BaseModel):

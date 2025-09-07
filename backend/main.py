@@ -3,7 +3,6 @@ import json
 from typing import Dict
 from uuid import uuid4
 
-from agents.exceptions import AgentsException, ModelBehaviorError
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, StreamingResponse
@@ -13,19 +12,21 @@ from base import (
     DoneStatus,
     EventType,
     LocalContext,
+    PromptCategory,
+    PromptHeaderKey,
     PromptRequest,
     PromptResponse,
     StartedPayload,
     StartedStatus,
     SystemError,
 )
-from check_code import check_gen_code
 from config import get_settings
-from create_code import gen_code
+from gen_code_handler import handle_gen_code
 from logger import logger
+from place_files_handler import handle_place_files
+from prompt_parser import extract_from_prompt
 
 # Constant Difinitions
-CATEGORY_CODEGEN = "CodeGen"
 
 # Settings
 settings = get_settings()
@@ -86,13 +87,7 @@ async def stream_service_get(session_id: str):
         raise HTTPException(status_code=404, detail="session not found")
 
     prompt = sessions.pop(session_id)
-    context = LocalContext(
-        category=CATEGORY_CODEGEN,
-        output_dir=settings.output_dir,
-        gen_code_filepath="",
-        code_check_result=True,
-        add_prompts=[],
-    )
+    category = extract_from_prompt(prompt, PromptHeaderKey.CATEGORY)
 
     async def sse_event(event_name: str, payload: dict) -> str:
         return (
@@ -116,102 +111,47 @@ async def stream_service_get(session_id: str):
         )
         yield await sse_event(EventType.STARTED, started_payload.model_dump())
 
-        # Make Payload (for Completed)
-        final_payload = DonePayload(
-            status=DoneStatus.COMPLETED, message="All Tasks Completed"
+        if not category:
+            error_payload = SystemError(
+                error="InvalidPrompt", detail="Category not found"
+            )
+            yield await sse_event(EventType.SYSTEM_ERROR, error_payload.model_dump())
+            final_payload = DonePayload(
+                status=DoneStatus.FAILED, message="Invalid prompt"
+            )
+            yield await sse_event(EventType.DONE, final_payload.model_dump())
+            return
+
+        context = LocalContext(
+            category=category,
+            output_dir=settings.output_dir,
+            gen_code_filepath="",
+            code_check_result=True,
+            add_prompts=[],
         )
 
-        # Code Gen Loop
-        for i in range(settings.code_gen_retry):
-            logger.debug(f"Code Gen Loop [{i}]")
+        handler_map = {
+            PromptCategory.GEN_CODE: handle_gen_code,
+            PromptCategory.PLACE_FILES: handle_place_files,
+        }
 
-            try:
-                # Create Code
-                final_prompt = prompt
-                add_prompts_len = len(context.add_prompts)
-                logger.debug(f"add_prompts_len: {add_prompts_len}")
-                if not add_prompts_len == 0:
-                    # extend prompt
-                    for add_prompt in context.add_prompts:
-                        logger.debug(f"add_prompt : {add_prompt}")
-                        prefix = "- "
-                        final_prompt = f"{final_prompt}\n{prefix}{add_prompt}\n"
-                        logger.debug(f"final_prompt: {final_prompt}")
-                async for line in gen_code(
-                    request=PromptRequest(prompt=final_prompt), context=context
-                ):
-                    try:
-                        data = json.loads(line)
-                        yield await sse_event(data["event"], data.get("payload", {}))
-                    except Exception as e:
-                        logger.debug(f"Invalid JSON from gen_code: {e}")
-            except ModelBehaviorError as e:
-                logger.warning(f"ModelBehaviorError detected: {e}")
-                error_payload = SystemError(error="ModelBehaviorError", detail=str(e))
-                yield await sse_event(
-                    EventType.SYSTEM_ERROR, error_payload.model_dump()
-                )
-                if i == settings.code_gen_retry - 1:
-                    final_payload = DonePayload(
-                        status=DoneStatus.FAILED, message="Retry Limit exceeded"
-                    )
-                else:
-                    continue
-            except AgentsException as e:
-                logger.error(f"AgentsException detected: {e}")
-                error_payload = SystemError(error="AgentsException", detail=str(e))
-                yield await sse_event(
-                    EventType.SYSTEM_ERROR, error_payload.model_dump()
-                )
-                final_payload = DonePayload(
-                    status=DoneStatus.FAILED, message="Internal error occurred"
-                )
-                break
-            except Exception as e:
-                logger.error(f"Unexpected error: {e}")
-                error_payload = SystemError(error="Unexpected error", detail=str(e))
-                yield await sse_event(
-                    EventType.SYSTEM_ERROR, error_payload.model_dump()
-                )
-                final_payload = DonePayload(
-                    status=DoneStatus.FAILED, message="Internal error occurred"
-                )
-                break
+        handler = handler_map.get(category)
+        if not handler:
+            error_payload = SystemError(
+                error="InvalidCategory", detail=f"Unknown category: {category}"
+            )
+            yield await sse_event(EventType.SYSTEM_ERROR, error_payload.model_dump())
+            final_payload = DonePayload(
+                status=DoneStatus.FAILED, message="Invalid category"
+            )
+            yield await sse_event(EventType.DONE, final_payload.model_dump())
+            return
 
-            # Wait for console input (for debug)
-            if settings.debug:
-                logger.debug("[debug] stop")
-                should_continue = await wait_for_console_input()
-                if not should_continue:
-                    logger.debug("[debug] user stop")
-                    break
-                logger.debug("[debug] continue")
-
-            # Check Code
-            async for line in check_gen_code(
-                request=PromptRequest(prompt=prompt), context=context
-            ):
-                try:
-                    data = json.loads(line)
-                    yield await sse_event(data["event"], data.get("payload", {}))
-                except Exception as e:
-                    logger.debug(f"Invalid JSON from check_gen_code: {e}")
-
-            # Loop Judge
-            if context.code_check_result:
-                break
-
-            # Retry Limit Check
-            if i == settings.code_gen_retry - 1:
-                final_payload = DonePayload(
-                    status=DoneStatus.FAILED, message="Retry Limit exceeded"
-                )
-
-        # Done
-        # yield await sse_event(EventType.DONE, {"message": "All Tasks Completed"})
-        yield await sse_event(EventType.DONE, final_payload.model_dump())
-
-        logger.debug("All Tasks Completed")
+        logger.debug(f"handler call: prompt: {prompt}")
+        async for event in handler(
+            prompt, context, settings, sse_event, wait_for_console_input
+        ):
+            yield event
 
     headers = {
         "Cache-Control": "no-cache, no-transform",

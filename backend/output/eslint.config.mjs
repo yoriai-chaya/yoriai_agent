@@ -1,7 +1,6 @@
 import { dirname } from "path";
 import { fileURLToPath } from "url";
 import { FlatCompat } from "@eslint/eslintrc";
-import requireVariantProp from "./eslint-custom-rules/require-variant-prop.mjs";
 import noImgElement from "./eslint-custom-rules/no-img-element.mjs";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -24,13 +23,11 @@ const eslintConfig = [
     plugins: {
       "custom-rules": {
         rules: {
-          "require-variant-prop": requireVariantProp,
           "no-img-element": noImgElement,
         },
       },
     },
     rules: {
-      "custom-rules/require-variant-prop": "error",
       "@next/next/no-img-element": "off",
       "custom-rules/no-img-element": "error",
     },
