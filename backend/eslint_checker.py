@@ -4,24 +4,24 @@ import subprocess
 from datetime import datetime
 from pathlib import Path
 
+from agents import RunContextWrapper
+
 from base import CodeCheckResult, ESLintInfo
 from logger import logger
 
 OUTPUT_FILENAME = "eslint_result.json"
+PACKAGE_JSON = "package.json"
 
 
-def run_eslint(filename: str) -> CodeCheckResult:
+def run_eslint(ctx: RunContextWrapper, filename: str) -> CodeCheckResult:
     logger.debug("run_eslint called")
-    curr_dir = Path()
-    base_dir = curr_dir.resolve()
-    eslint_dir = base_dir / "output"
+
+    eslint_dir: Path = ctx.context.output_dir
     file_path = eslint_dir / "app" / filename
     results_dir = eslint_dir / "results"
     backup_dir = results_dir / "backup"
     output_path = results_dir / OUTPUT_FILENAME
 
-    logger.debug(f"curr_dir: {curr_dir}")
-    logger.debug(f"base_dir: {base_dir}")
     logger.debug(f"eslint_dir: {eslint_dir}")
     logger.debug(f"file_path: {file_path}")
     logger.debug(f"results_dir: {results_dir}")
@@ -43,6 +43,18 @@ def run_eslint(filename: str) -> CodeCheckResult:
     if not output_path.exists():
         with output_path.open("w", encoding="utf-8") as f:
             f.write("[]")
+
+    # for Next.js install check
+    package_json = eslint_dir / PACKAGE_JSON
+    logger.debug(f"package_json: {package_json}")
+    if not package_json.exists():
+        error_msg = (
+            f"{package_json} not found in {eslint_dir}. Next.js may not be installed."
+        )
+        eslint_result = CodeCheckResult(
+            result=False, output_filename=None, error_detail=error_msg
+        )
+        return eslint_result
 
     # for backup
     mtime = datetime.fromtimestamp(output_path.stat().st_mtime)
@@ -66,6 +78,11 @@ def run_eslint(filename: str) -> CodeCheckResult:
         )
 
     logger.debug(f"npx eslint returncode: {result.returncode}")
+    if result.returncode not in (0, 1):
+        eslint_result = CodeCheckResult(
+            result=False, output_filename=None, error_detail=result.stderr
+        )
+        return eslint_result
 
     try:
         with output_path.open("r", encoding="utf-8") as f:

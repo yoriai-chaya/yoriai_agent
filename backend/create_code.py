@@ -40,7 +40,10 @@ async def gen_code(request: PromptRequest, context: LocalContext):
     try:
         _maybe_inject_fault(request.prompt)
         result = Runner.run_streamed(
-            starting_agent=code_gen_agent, input=request.prompt, context=context
+            starting_agent=code_gen_agent,
+            input=request.prompt,
+            context=context,
+            max_turns=context.max_turns,
         )
         async for event in result.stream_events():
             if event.type == "raw_response_event":

@@ -47,7 +47,8 @@ def _backup_existing_file(target_dir: str, filename: str) -> None:
 # Callback Functions
 async def on_save(ctx: RunContextWrapper[LocalContext], input_data: CodeSaveData):
     logger.debug("on_save called")
-    base_output = os.path.join(os.getcwd(), ctx.context.output_dir)
+    base_output = str(ctx.context.output_dir)
+    logger.debug(f"base_output: {base_output}")
     target_dir = os.path.join(base_output, input_data.directory)
     os.makedirs(target_dir, exist_ok=True)
 
@@ -86,7 +87,7 @@ async def check_code(ctx: RunContextWrapper, filename: str) -> CodeCheckResult:
         filename: check target file
 
     """
-    result = run_eslint(filename=filename)
+    result = run_eslint(ctx=ctx, filename=filename)
     return result
 
 

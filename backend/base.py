@@ -1,4 +1,5 @@
 from enum import StrEnum
+from pathlib import Path
 from typing import Any, List
 
 from pydantic import BaseModel
@@ -68,10 +69,11 @@ class CodeGenResponse(BaseModel):
 
 class LocalContext(BaseModel):
     category: str
-    output_dir: str
+    output_dir: Path
+    max_turns: int
     response: CodeGenResponse | None = None
     gen_code_filepath: str
-    code_check_result: bool
+    is_retry_gen_code: bool
     add_prompts: List[str]
 
 

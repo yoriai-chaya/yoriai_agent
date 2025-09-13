@@ -21,7 +21,10 @@ async def handle_place_files(
         status=DoneStatus.COMPLETED, message="PlaceFiles completed"
     )
     result = Runner.run_streamed(
-        starting_agent=place_files_agent, input=prompt, context=context
+        starting_agent=place_files_agent,
+        input=prompt,
+        context=context,
+        max_turns=context.max_turns,
     )
     async for event in result.stream_events():
         if event.type == "agent_updated_stream_event":

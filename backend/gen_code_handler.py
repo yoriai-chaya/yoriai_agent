@@ -87,17 +87,27 @@ async def handle_gen_code(
             logger.debug("[debug] continue")
 
         # Check Code
-        async for line in check_gen_code(
-            request=PromptRequest(prompt=prompt), context=context
-        ):
-            try:
-                data = json.loads(line)
-                yield await sse_event(data["event"], data.get("payload", {}))
-            except Exception as e:
-                logger.debug(f"Invalid JSON from check_gen_code: {e}")
+        try:
+            async for line in check_gen_code(
+                request=PromptRequest(prompt=prompt), context=context
+            ):
+                try:
+                    data = json.loads(line)
+                    yield await sse_event(data["event"], data.get("payload", {}))
+                except Exception as e:
+                    logger.debug(f"Invalid JSON from check_gen_code: {e}")
+
+        except Exception as e:
+            logger.error(f"Unexpected error: {e}")
+            error_payload = SystemError(error="Unexpected error", detail=str(e))
+            yield await sse_event(EventType.SYSTEM_ERROR, error_payload.model_dump())
+            final_payload = DonePayload(
+                status=DoneStatus.FAILED, message="check_gen_code error occurred"
+            )
+            break
 
         # Loop Judge
-        if context.code_check_result:
+        if not context.is_retry_gen_code:
             break
 
         # Retry Limit Check
@@ -107,7 +117,5 @@ async def handle_gen_code(
             )
 
     # Done
-    # yield await sse_event(EventType.DONE, {"message": "All Tasks Completed"})
     yield await sse_event(EventType.DONE, final_payload.model_dump())
-
     logger.debug("All Tasks Completed")

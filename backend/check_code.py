@@ -9,7 +9,10 @@ async def check_gen_code(request: PromptRequest, context: LocalContext):
     logger.debug("check_gen_code called")
     file_path = context.gen_code_filepath
     result = Runner.run_streamed(
-        starting_agent=code_check_agent, input=file_path, context=context
+        starting_agent=code_check_agent,
+        input=file_path,
+        context=context,
+        max_turns=context.max_turns,
     )
 
     async for event in result.stream_events():
@@ -27,9 +30,16 @@ async def check_gen_code(request: PromptRequest, context: LocalContext):
 
                 output = event.item.output
                 if isinstance(output, CodeCheckResult):
+                    item_result = output.result
+                    logger.debug(f"result: {item_result}")
+                    if not item_result:
+                        context.is_retry_gen_code = False
+                        raise Exception(f"code check failed: {output.error_detail}")
+
                     eslint_result = output.eslint_result
+                    logger.debug(f"eslint_result: {eslint_result}")
                     if eslint_result:
-                        context.code_check_result = True
+                        context.is_retry_gen_code = False
                         response = StreamResponse(
                             event=EventType.CHECK_RESULT,
                             payload={
@@ -41,7 +51,7 @@ async def check_gen_code(request: PromptRequest, context: LocalContext):
                         )
                         yield response.to_json_line()
                     else:
-                        context.code_check_result = False
+                        context.is_retry_gen_code = True
                         eslint_infos = output.eslint_info or []
                         for eslint_info in eslint_infos:
                             desc = (eslint_info.description or "").strip()
@@ -66,4 +76,5 @@ async def check_gen_code(request: PromptRequest, context: LocalContext):
                     f"Message Output:\n {ItemHelpers.text_message_output(event.item)}"
                 )
             else:
+                logger.debug("Event: else / pass")
                 pass

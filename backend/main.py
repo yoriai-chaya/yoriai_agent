@@ -1,5 +1,7 @@
 import asyncio
 import json
+import re
+from pathlib import Path
 from typing import Dict
 from uuid import uuid4
 
@@ -27,6 +29,40 @@ from place_files_handler import handle_place_files
 from prompt_parser import extract_from_prompt
 
 # Constant Difinitions
+
+
+# Internal Functions
+def _resolve_path(path_str: str) -> Path:
+    logger.debug(f"_resolve_path called: {path_str}")
+    p = Path(path_str)
+    if p.is_absolute():
+        # Absolute path
+        if not p.exists():
+            raise FileNotFoundError(f"Path '{path_str}' not found")
+        logger.debug(f"Absolute path resolved: {p}")
+        return p
+    # Relative path
+    base = Path().resolve()
+    logger.debug(f"base: {base}")
+    abs_path = (base / p).resolve()
+    logger.debug(f"abs_path: {abs_path}")
+    if not abs_path.exists():
+        raise FileNotFoundError(f"Path '{abs_path}' not found")
+    return abs_path
+
+
+def _resolve_placeholders(prompt: str) -> str:
+    def replacer(match):
+        file_path = match.group(1).strip()
+        try:
+            content = Path(file_path).read_text(encoding="utf-8")
+            return f"```{Path(file_path).suffix.lstrip('.')}\n{content}\n```"
+        except FileNotFoundError:
+            return f"[Error: File '{file_path}' not found]"
+
+    filled = re.sub(r"\{\{file:(.+?)\}\}", replacer, prompt)
+    return filled
+
 
 # Settings
 settings = get_settings()
@@ -122,20 +158,43 @@ async def stream_service_get(session_id: str):
             yield await sse_event(EventType.DONE, final_payload.model_dump())
             return
 
+        try:
+            resolved_prompt = _resolve_placeholders(prompt)
+        except Exception as e:
+            error_payload = SystemError(error="InvalidPrompt", detail=str(e))
+            yield await sse_event(EventType.SYSTEM_ERROR, error_payload.model_dump())
+            final_payload = DonePayload(
+                status=DoneStatus.FAILED, message="Invalid prompt"
+            )
+            yield await sse_event(EventType.DONE, final_payload.model_dump())
+            return
+
+        try:
+            output_dir = _resolve_path(settings.output_dir)
+        except Exception as e:
+            error_payload = SystemError(error="Resolve path error", detail=str(e))
+            yield await sse_event(EventType.SYSTEM_ERROR, error_payload.model_dump())
+            final_payload = DonePayload(status=DoneStatus.FAILED, message="Path error")
+            yield await sse_event(EventType.DONE, final_payload.model_dump())
+            return
+        logger.debug(f"output_dir: {output_dir}")
+
         context = LocalContext(
             category=category,
-            output_dir=settings.output_dir,
+            output_dir=output_dir,
+            max_turns=settings.openai_max_turns,
             gen_code_filepath="",
-            code_check_result=True,
+            is_retry_gen_code=True,
             add_prompts=[],
         )
+        logger.debug(f"--output_dir: {output_dir}")
 
         handler_map = {
             PromptCategory.GEN_CODE: handle_gen_code,
             PromptCategory.PLACE_FILES: handle_place_files,
         }
 
-        handler = handler_map.get(category)
+        handler = handler_map.get(category)  # type: ignore
         if not handler:
             error_payload = SystemError(
                 error="InvalidCategory", detail=f"Unknown category: {category}"
@@ -149,7 +208,7 @@ async def stream_service_get(session_id: str):
 
         logger.debug(f"handler call: prompt: {prompt}")
         async for event in handler(
-            prompt, context, settings, sse_event, wait_for_console_input
+            resolved_prompt, context, settings, sse_event, wait_for_console_input
         ):
             yield event
 

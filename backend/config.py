@@ -1,5 +1,6 @@
 import os
 from functools import lru_cache
+from pathlib import Path
 
 from pydantic_settings import (
     BaseSettings,
@@ -10,8 +11,9 @@ from pydantic_settings import (
 class Settings(BaseSettings):
     openai_api_key: str
     openai_model: str = "gpt-4o-mini"
+    openai_max_turns: int = 2
     log_dir: str = "log"
-    output_dir: str = "output"
+    output_dir: Path = Path("output")
     debug: bool = False
     code_gen_retry: int = 3
 
