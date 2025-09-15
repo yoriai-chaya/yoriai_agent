@@ -28,8 +28,6 @@ from logger import logger
 from place_files_handler import handle_place_files
 from prompt_parser import extract_from_prompt
 
-# Constant Difinitions
-
 
 # Internal Functions
 def _resolve_path(path_str: str) -> Path:
@@ -51,14 +49,18 @@ def _resolve_path(path_str: str) -> Path:
     return abs_path
 
 
-def _resolve_placeholders(prompt: str) -> str:
+def _resolve_placeholders(prompt: str, context: LocalContext) -> str:
     def replacer(match):
+        logger.debug("replacer called")
         file_path = match.group(1).strip()
+        logger.debug(f"file_path: {file_path}")
+        full_path = context.output_dir / file_path
+        logger.debug(f"full_path: {full_path}")
         try:
-            content = Path(file_path).read_text(encoding="utf-8")
-            return f"```{Path(file_path).suffix.lstrip('.')}\n{content}\n```"
-        except FileNotFoundError:
-            return f"[Error: File '{file_path}' not found]"
+            content = Path(str(full_path)).read_text(encoding="utf-8")
+            return f"[{file_path}]\n```{Path(file_path).suffix.lstrip('.')}\n{content}\n```"
+        except FileNotFoundError as e:
+            raise e
 
     filled = re.sub(r"\{\{file:(.+?)\}\}", replacer, prompt)
     return filled
@@ -159,17 +161,6 @@ async def stream_service_get(session_id: str):
             return
 
         try:
-            resolved_prompt = _resolve_placeholders(prompt)
-        except Exception as e:
-            error_payload = SystemError(error="InvalidPrompt", detail=str(e))
-            yield await sse_event(EventType.SYSTEM_ERROR, error_payload.model_dump())
-            final_payload = DonePayload(
-                status=DoneStatus.FAILED, message="Invalid prompt"
-            )
-            yield await sse_event(EventType.DONE, final_payload.model_dump())
-            return
-
-        try:
             output_dir = _resolve_path(settings.output_dir)
         except Exception as e:
             error_payload = SystemError(error="Resolve path error", detail=str(e))
@@ -187,7 +178,17 @@ async def stream_service_get(session_id: str):
             is_retry_gen_code=True,
             add_prompts=[],
         )
-        logger.debug(f"--output_dir: {output_dir}")
+
+        try:
+            resolved_prompt = _resolve_placeholders(prompt=prompt, context=context)
+        except Exception as e:
+            error_payload = SystemError(error="InvalidPrompt", detail=str(e))
+            yield await sse_event(EventType.SYSTEM_ERROR, error_payload.model_dump())
+            final_payload = DonePayload(
+                status=DoneStatus.FAILED, message="Invalid prompt"
+            )
+            yield await sse_event(EventType.DONE, final_payload.model_dump())
+            return
 
         handler_map = {
             PromptCategory.GEN_CODE: handle_gen_code,
@@ -206,7 +207,7 @@ async def stream_service_get(session_id: str):
             yield await sse_event(EventType.DONE, final_payload.model_dump())
             return
 
-        logger.debug(f"handler call: prompt: {prompt}")
+        logger.debug(f"handler call: resolved_prompt: {resolved_prompt}")
         async for event in handler(
             resolved_prompt, context, settings, sse_event, wait_for_console_input
         ):
