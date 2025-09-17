@@ -1,15 +1,15 @@
 import json
-import shutil
-import subprocess
-from datetime import datetime
 from pathlib import Path
 
 from agents import RunContextWrapper
 
 from base import CodeCheckResult, ESLintInfo
 from logger import logger
+from run_command import run_cmd
 
-OUTPUT_FILENAME = "eslint_result.json"
+APP_DIR = "app"
+RESULTS_DIR = "results"
+ESLINT_OUTPUT_FILENAME = "eslint_result.json"
 PACKAGE_JSON = "package.json"
 
 
@@ -17,34 +17,24 @@ def run_eslint(ctx: RunContextWrapper, filename: str) -> CodeCheckResult:
     logger.debug("run_eslint called")
 
     eslint_dir: Path = ctx.context.output_dir
-    file_path = eslint_dir / "app" / filename
-    results_dir = eslint_dir / "results"
-    backup_dir = results_dir / "backup"
-    output_path = results_dir / OUTPUT_FILENAME
-
+    file_path = eslint_dir / APP_DIR / filename
+    results_dir = eslint_dir / RESULTS_DIR
+    output_path = results_dir / ESLINT_OUTPUT_FILENAME
     logger.debug(f"eslint_dir: {eslint_dir}")
     logger.debug(f"file_path: {file_path}")
     logger.debug(f"results_dir: {results_dir}")
-    logger.debug(f"backup_dir: {backup_dir}")
     logger.debug(f"output_path: {output_path}")
 
     # for Directory check
     if not eslint_dir.exists():
         error_msg = f"ESLint directory not found : {eslint_dir}"
-
         eslint_result = CodeCheckResult(
             result=False, output_filename=None, error_detail=error_msg
         )
         return eslint_result
-
     results_dir.mkdir(exist_ok=True)
-    backup_dir.mkdir(exist_ok=True)
 
-    if not output_path.exists():
-        with output_path.open("w", encoding="utf-8") as f:
-            f.write("[]")
-
-    # for Next.js install check
+    # for Next.js install check (package.json check)
     package_json = eslint_dir / PACKAGE_JSON
     logger.debug(f"package_json: {package_json}")
     if not package_json.exists():
@@ -56,27 +46,25 @@ def run_eslint(ctx: RunContextWrapper, filename: str) -> CodeCheckResult:
         )
         return eslint_result
 
-    # for backup
-    mtime = datetime.fromtimestamp(output_path.stat().st_mtime)
-    timestamp = mtime.strftime("%Y%m%d_%H%M%S")
-
-    stem = output_path.stem
-    suffix = output_path.suffix.lstrip(".")
-
-    backup_filename = f"{stem}_{timestamp}.{suffix}"
-    backup_path = results_dir / backup_dir / backup_filename
-    logger.debug(f"backup_path: {backup_path}")
-
-    shutil.copy2(output_path, backup_path)
-    logger.debug(f"backup created: {backup_path}")
+    # Run eslint command
+    if not output_path.exists():
+        with output_path.open("w", encoding="utf-8") as f:
+            f.write("[]")
 
     command = ["npx", "eslint", str(file_path), "--format", "./eslint.formatter.mjs"]
-
-    with output_path.open("w", encoding="utf-8") as f:
-        result = subprocess.run(
-            command, cwd=eslint_dir, stdout=f, stderr=subprocess.PIPE, text=True
+    try:
+        result = run_cmd(
+            command=command,
+            output_path=output_path,
+            cwd=str(eslint_dir),
         )
+    except FileNotFoundError as e:
+        eslint_result = CodeCheckResult(
+            result=False, output_filename=None, error_detail=str(e)
+        )
+        return eslint_result
 
+    # Check Return Code
     logger.debug(f"npx eslint returncode: {result.returncode}")
     if result.returncode not in (0, 1):
         eslint_result = CodeCheckResult(
