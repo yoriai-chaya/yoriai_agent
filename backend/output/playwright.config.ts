@@ -1,12 +1,15 @@
 import { defineConfig, devices } from "@playwright/test";
+import path from "path";
+import { results, base_url } from "./config.shared";
 
-console.log("Loaded Playwright config: ", __filename);
 export default defineConfig({
-  workers: 1,
-  fullyParallel: false,
+  testDir: "tests",
+  snapshotPathTemplate: path.join(results, "{testFilePath}/{arg}{ext}"),
+  timeout: 9_000,
   use: {
-    baseURL: "http://localhost:3003",
+    baseURL: base_url,
     headless: false,
+    navigationTimeout: 12_000,
   },
 
   projects: [
@@ -22,5 +25,7 @@ export default defineConfig({
     reuseExistingServer: false,
   },
 
-  reporter: "./playwright-reporter.ts",
+  reporter: [
+    ["json", { outputFile: path.join(results, "playwright-report.json") }],
+  ],
 });
