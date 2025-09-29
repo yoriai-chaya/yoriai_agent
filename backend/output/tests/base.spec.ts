@@ -4,7 +4,7 @@ import {
   Page,
   Response,
 } from "@playwright/test";
-import { results, playwright_info_file, base_url } from "../config.shared";
+import { results, base_url, playwright_info_file } from "../playwright.customconfig";
 import path from "path";
 import fs from "fs/promises";
 

@@ -1,6 +1,6 @@
 import { defineConfig, devices } from "@playwright/test";
 import path from "path";
-import { results, base_url } from "./config.shared";
+import { results, base_url, playwright_report_file } from "./playwright.customconfig";
 
 export default defineConfig({
   testDir: "tests",
@@ -21,11 +21,11 @@ export default defineConfig({
 
   webServer: {
     command: "npm run dev",
-    url: "http://localhost:3003",
+    url: base_url,
     reuseExistingServer: false,
   },
 
   reporter: [
-    ["json", { outputFile: path.join(results, "playwright-report.json") }],
+    ["json", { outputFile: path.join(results, playwright_report_file) }],
   ],
 });

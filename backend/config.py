@@ -14,6 +14,7 @@ class Settings(BaseSettings):
     openai_max_turns: int = 2
     log_dir: str = "log"
     output_dir: Path = Path("output")
+    test_results_dir: Path = Path("results")
     debug: bool = False
     code_gen_retry: int = 3
 

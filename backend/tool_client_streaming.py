@@ -1,10 +1,10 @@
 #! /usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-fronter.py - Command-line client for backend API streaming via SSE.
+tool_client_streaming.py - Command-line client for backend API streaming via SSE.
 
 Usage:
-    $ python fronter.py -f <prompt-file>
+    $ python tool_client_streaming.py -f <prompt-file>
 """
 
 import argparse
@@ -63,7 +63,7 @@ def post_prompt(prompt: str) -> str:
 def stream_events(session_id: str) -> None:
     url = f"{API_BASE}/main/stream/{session_id}"
     headers = {
-        "Accept": "text/event-stre as jjjam",
+        "Accept": "text/event-stream",
         "Cache-Control": "no-cache",
     }
     req = request.Request(url, headers=headers, method="GET")

@@ -1,5 +1,7 @@
+import argparse
 import json
 import re
+import sys
 from pathlib import Path
 from typing import List
 
@@ -62,7 +64,19 @@ def extract_waiting_for_message(errors: list[dict]) -> str | None:
 
 
 def load_playwright_report(report_path: str) -> PlaywrightSuites:
-    report = json.loads(Path(report_path).read_text(encoding="utf-8"))
+    path = Path(report_path)
+    if not path.exists():
+        print(f"Error: File not found: {report_path}")
+        sys.exit(1)
+    try:
+        report = json.loads(path.read_text(encoding="utf-8"))
+    except OSError as e:
+        print(f"Error: Failed to open file {report_path}: {e}")
+        sys.exit(1)
+    except json.JSONDecodeError as e:
+        print(f"Error: Failed to parse JSON in {report_path}: {e}")
+        sys.exit(1)
+
     suite = report["suites"][0]["suites"][0]
     specs_data = suite["specs"]
 
@@ -120,5 +134,26 @@ def load_playwright_report(report_path: str) -> PlaywrightSuites:
 
 
 if __name__ == "__main__":
-    result = load_playwright_report("./output/results/playwright-report.json")
-    print(json.dumps(result.model_dump(), indent=2, ensure_ascii=False))
+    parser = argparse.ArgumentParser(description="Playwright Report Parser")
+    parser.add_argument(
+        "-f", "--file", required=True, help="Playwright report file (json-format)"
+    )
+    args = parser.parse_args()
+    if not args.file:
+        parser.print_usage()
+        sys.exit(1)
+    result = load_playwright_report(args.file)
+    result_dict = result.model_dump()
+
+    print(json.dumps(result_dict, indent=2, ensure_ascii=False))
+
+    input_path = Path(args.file)
+    output_file = input_path.with_name(f"{input_path.stem}_summary{input_path.suffix}")
+    try:
+        output_file.write_text(
+            json.dumps(result_dict, indent=2, ensure_ascii=False), encoding="utf-8"
+        )
+        print(f"\nSaved report: {output_file}")
+    except OSError as e:
+        print(f"Error: Failed to write file {output_file}: {e}")
+        sys.exit(1)

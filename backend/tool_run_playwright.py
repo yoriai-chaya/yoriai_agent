@@ -1,18 +1,20 @@
+import argparse
 import datetime
 import json
 import subprocess
 import sys
 from pathlib import Path
 
+from config import get_settings
 
-def run_playwright_tests():
+PLAYWRIGHT_CONFIG_TS = "playwright.config.ts"
+
+
+def run_playwright_tests(test_file: str, output_dir: Path, results: Path):
     print("run_playwright_tests() called")
-    project_root = Path(__file__).resolve().parent.parent
-    output_dir = project_root / "output"
-    config_file = output_dir / "playwright.config.ts"
-    test_file = "home.spec.ts"
-    #test_file = "booking_step1.spec.ts"
-    results_dir = output_dir / "results"
+    project_root = Path(__file__).resolve().parent
+    config_file = output_dir / PLAYWRIGHT_CONFIG_TS
+    results_dir = output_dir / results
     results_dir.mkdir(exist_ok=True)
     print(f"project_root: {project_root}")
     print(f"results_dir: {results_dir}")
@@ -20,9 +22,7 @@ def run_playwright_tests():
     print(f"test_file: {test_file}")
 
     timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-    json_report_file = results_dir / f"playwright_report_{timestamp}.json"
     meta_file = results_dir / f"playwright_meta_{timestamp}.json"
-    # summary_file = results_dir / f"playwright_summary_{timestamp}.md"
 
     command = [
         "npx",
@@ -31,16 +31,11 @@ def run_playwright_tests():
         test_file,
     ]
 
-    # start_time = datetime.datetime.now()
     try:
         result = subprocess.run(
             command, cwd=output_dir, capture_output=True, text=True, check=False
         )
-        end_time = datetime.datetime.now()
-        print(f"result: {result}")
-        print("----------")
         print(f"result.stdout: {result.stdout}")
-        print("----------")
         print(f"result.stderr: {result.stderr}")
     except Exception as e:
         meta_file.write_text(
@@ -60,4 +55,15 @@ def run_playwright_tests():
 
 
 if __name__ == "__main__":
-    run_playwright_tests()
+    parser = argparse.ArgumentParser(description="Run Playwright Tool")
+    parser.add_argument("-f", "--file", required=True, help="Run Playwright Tool")
+    args = parser.parse_args()
+    if not args.file:
+        parser.print_usage()
+        sys.exit(1)
+
+    settings = get_settings()
+    output_dir = settings.output_dir
+    results = settings.test_results_dir
+    print(f"file: {args.file}, output_dir: {output_dir}, results: {results}")
+    run_playwright_tests(args.file, output_dir, results)
