@@ -1,6 +1,9 @@
 import { defineConfig, devices } from "@playwright/test";
 import path from "path";
-import { results, base_url, playwright_report_file } from "./playwright.customconfig";
+import customConfig from "./playwright.customconfig.json";
+const base_url = customConfig.base_url;
+const results = path.join(__dirname, customConfig.results);
+const playwright_report_file = customConfig.playwright_report_file;
 
 export default defineConfig({
   testDir: "tests",
@@ -26,6 +29,11 @@ export default defineConfig({
   },
 
   reporter: [
-    ["json", { outputFile: path.join(results, playwright_report_file) }],
+    [
+      "json",
+      {
+        outputFile: path.join(results, playwright_report_file),
+      },
+    ],
   ],
 });
