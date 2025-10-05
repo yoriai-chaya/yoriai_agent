@@ -34,6 +34,11 @@ function isAgentResultEvent(
 ): event is Extract<StreamResponse, { event: typeof EventTypes.AGENT_RESULT }> {
   return event.event === EventTypes.AGENT_RESULT;
 }
+function isTestResultEvent(
+  event: StreamResponse
+): event is Extract<StreamResponse, { event: typeof EventTypes.TEST_RESULT }> {
+  return event.event === EventTypes.TEST_RESULT;
+}
 function isDoneEvent(
   event: StreamResponse
 ): event is Extract<StreamResponse, { event: typeof EventTypes.DONE }> {
@@ -126,6 +131,27 @@ const StreamEvent = ({ status, responseInfo }: StreamEventProps) => {
 
             // ----- agent_result event -----
             if (isAgentResultEvent(sr)) {
+              const result = sr.payload.result;
+              const resultStr = result ? "OK" : "Error";
+              const emoji = result ? Emoji.BLUE_CIRCLE : Emoji.RED_CIRCLE;
+              return (
+                <div key={`agent-result-${idx}`}>
+                  <div className="grid grid-cols-6 items-center">
+                    <div></div>
+                    <div className="col-span-3 text-base ml-5">
+                      <span className="text-[12px] pr-1">{emoji}</span>
+                      <span>result: {resultStr}</span>
+                    </div>
+                    <div className="col-span-2 text-sm text-gray-500">
+                      {formatDateTime(ev.r_time)}
+                    </div>
+                  </div>
+                </div>
+              );
+            }
+
+            // ----- test_result event -----
+            if (isTestResultEvent(sr)) {
               const result = sr.payload.result;
               const resultStr = result ? "OK" : "Error";
               const emoji = result ? Emoji.BLUE_CIRCLE : Emoji.RED_CIRCLE;

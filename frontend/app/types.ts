@@ -23,6 +23,25 @@ export type CheckResultPayload = {
   detail: string;
 };
 
+export type TestResultSpec = {
+  title: string;
+  result: boolean;
+  error_summary: string | null;
+  error_message: string | null;
+  error_stack: string | null;
+};
+
+export type TestResultPayload = {
+  name: string;
+  file: string;
+  result: boolean;
+  detail: string;
+  total: number;
+  ok: number;
+  ng: number;
+  specs: TestResultSpec[];
+};
+
 export type StreamResponse =
   | { event: "started"; payload: { status: string; message: string } }
   | {
@@ -36,7 +55,8 @@ export type StreamResponse =
   | {
       event: "agent_result";
       payload: { result: boolean; error_detail: string };
-    };
+    }
+  | { event: "test_result"; payload: TestResultPayload };
 
 export type ResponseEvent = {
   s_res: StreamResponse;
@@ -55,6 +75,8 @@ export const EventTypes = {
   CHECK_RESULT: "check_result",
   SYSTEM_ERROR: "system_error",
   AGENT_RESULT: "agent_result",
+  TEST_RUN: "test_run",
+  TEST_RESULT: "test_result",
 } as const;
 
 export type CheckResultEvent = {

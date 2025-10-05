@@ -2,6 +2,7 @@ import os
 import shutil
 import sys
 from datetime import datetime
+from pathlib import Path
 from typing import List
 
 from agents import (
@@ -13,6 +14,7 @@ from agents import (
 )
 from pydantic import ValidationError
 
+from backup_playwright_results import save_playwright_results
 from base import (
     AgentResult,
     CodeCheckResult,
@@ -20,10 +22,13 @@ from base import (
     CodeSaveData,
     CodeType,
     LocalContext,
+    RunTestsResultPayload,
 )
 from config import get_settings
 from eslint_checker import run_eslint
+from eval_tests import eval_test_results
 from logger import logger
+from playwright_runner import run_playwright
 
 
 # Internal Functions
@@ -64,6 +69,14 @@ async def on_save(ctx: RunContextWrapper[LocalContext], input_data: CodeSaveData
     ctx.context.response = response
     ctx.context.gen_code_filepath = file_path
     return
+
+
+# Callback Functions
+async def on_eval_tests(ctx: RunContextWrapper[LocalContext]) -> RunTestsResultPayload:
+    logger.debug("on_eval_tests called")
+    test_results = eval_test_results(ctx=ctx)
+    logger.debug(f"return test_results: {test_results}")
+    return test_results
 
 
 # Settings
@@ -149,6 +162,34 @@ async def place_files(
         return AgentResult(result=False, error_detail=f"Unexpected error: {e}")
 
 
+# Function Tools
+@function_tool
+async def run_tests(ctx: RunContextWrapper, test_dir: str, test_file: str):
+    """Run tests using playwright.
+
+    Args:
+        test_dir: directory containing test files
+        test_file: test file name
+
+    """
+    logger.debug("run_tests called")
+    output_dir: Path = ctx.context.output_dir
+    logger.debug(f"output_dir: {output_dir}")
+    logger.debug(f"test_dir: {test_dir}")
+    logger.debug(f"test_file: {test_file}")
+    result = run_playwright(ctx=ctx, test_dir=test_dir, test_file=test_file)
+    return result
+
+
+# Function Tools
+@function_tool
+async def backup_test_results(ctx: RunContextWrapper):
+    """Backup test info and report files."""
+    logger.debug("backup_test_results called")
+    save_playwright_results(ctx=ctx)
+    return
+
+
 # Agents
 file_save_agent = Agent(
     name="FileSaveAgent", instructions="ファイル保存を行うエージェント"
@@ -204,4 +245,40 @@ place_files_agent = Agent[LocalContext](
     model=model,
     output_type=AgentResult,
     tools=[place_files],
+)
+
+# Agents
+EVAL_TESTS = """
+あなたはPlaywrightを用いてテスト実行したテスト結果を分析・評価する専門家です。
+指定されたディレクトリにある指定されたテスト結果ファイルを分析・評価し、
+その内容をテスト結果サマリとしてファイル保存します。
+また、テスト結果サマリを編集して、フロントエンド側にメッセージ送信します。
+"""
+eval_tests_agent = Agent(
+    name="EvalTestsAgent",
+    instructions=EVAL_TESTS,
+    output_type=RunTestsResultPayload,
+)
+
+eval_tests_handoff = handoff(
+    agent=file_save_agent,
+    on_handoff=on_eval_tests,
+    tool_name_override="eval_tests",
+    tool_description_override="Analyze and evaluate test results, edit results and send messages to the frond-end",
+)
+
+RUN_TESTS = """
+あなたはNext.jsのアプリケーションのテスト実行を行う専門家です。
+指定されたディレクトリにある指定されたテストプログラムファイルに
+記述された内容を登録されたツールを使ってテストを実行します。
+テスト実行後に得られたテスト結果の解析とフロントエンドへのテスト結果の
+送信はEvalTestsAgentに引き継ぎます。
+また、テスト実行後、テスト結果ファイルを登録されたツールを使ってバックアップします。
+"""
+run_tests_agent = Agent[LocalContext](
+    name="RunTestsAgent",
+    instructions=RUN_TESTS,
+    model=model,
+    tools=[run_tests, backup_test_results],
+    handoffs=[eval_tests_handoff],
 )

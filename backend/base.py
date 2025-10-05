@@ -14,6 +14,8 @@ class EventType(StrEnum):
     CHECK_RESULT = "check_result"
     SYSTEM_ERROR = "system_error"
     AGENT_RESULT = "agent_result"
+    TEST_RUN = "test_run"
+    TEST_RESULT = "test_result"
 
 
 class StartedStatus(StrEnum):
@@ -28,6 +30,7 @@ class DoneStatus(StrEnum):
 class PromptCategory(StrEnum):
     GEN_CODE = "GenCode"
     PLACE_FILES = "PlaceFiles"
+    RUN_TESTS = "RunTests"
 
 
 class PromptHeaderKey(StrEnum):
@@ -75,6 +78,11 @@ class LocalContext(BaseModel):
     gen_code_filepath: str
     is_retry_gen_code: bool
     add_prompts: List[str]
+    results_dir: Path
+    playwright_info_file: str
+    playwright_report_file: str
+    playwright_report_summary_file: str
+    test_file: str
 
 
 class ESLintInfo(BaseModel):
@@ -118,3 +126,43 @@ class AgentResult(BaseModel):
 class AgentResultPayload(BaseModel):
     result: bool
     error_detail: str | None = None
+
+
+class PlaywrightSpecs(BaseModel):
+    title: str
+    result: bool
+    error_summary: str | None = None
+    error_message: str | None = None
+    error_stack: str | None = None
+
+
+class PlaywrightSuites(BaseModel):
+    name: str
+    file: str
+    result: bool
+    total: int
+    ok: int
+    ng: int
+    specs: List[PlaywrightSpecs]
+
+
+class LoadPlaywrightReport(BaseModel):
+    result: bool
+    detail: str | None = None
+    suites: PlaywrightSuites | None = None
+
+
+class RunTestsResultPayload(BaseModel):
+    result: bool
+    detail: str | None = None
+    name: str | None = None
+    file: str | None = None
+    total: int | None = None
+    ok: int | None = None
+    ng: int | None = None
+    specs: List[PlaywrightSpecs] | None = None
+
+
+class FunctionResult(BaseModel):
+    result: bool
+    detail: str | None = None
