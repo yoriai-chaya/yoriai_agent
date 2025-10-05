@@ -18,10 +18,16 @@ def save_playwright_results(ctx: RunContextWrapper):
     logger.debug(f"playwright_info_file: {playwright_info_file}")
     playwright_report_file = ctx.context.playwright_report_file
     logger.debug(f"playwright_report_file: {playwright_report_file}")
+    playwright_report_summary_file = ctx.context.playwright_report_summary_file
+    logger.debug(f"playwright_report_summary_file: {playwright_report_summary_file}")
     test_file = ctx.context.test_file
     logger.debug(f"test_file: {test_file}")
 
-    backup_targets = [playwright_info_file, playwright_report_file]
+    backup_targets = [
+        playwright_info_file,
+        playwright_report_file,
+        playwright_report_summary_file,
+    ]
     backup_dir: Path = output_dir / results_dir / test_file
 
     try:

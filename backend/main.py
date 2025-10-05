@@ -29,8 +29,6 @@ from place_files_handler import handle_place_files
 from prompt_parser import extract_from_prompt
 from run_tests_handler import handler_run_tests
 
-PLAYWRIGHT_CUSTOMCONFIG_JSON = "playwright.customconfig.json"
-
 
 # Internal Functions
 def _resolve_path(path_str: str) -> Path:
@@ -180,7 +178,7 @@ async def stream_service_get(session_id: str):
             return
         logger.debug(f"output_dir: {output_dir}")
 
-        custom_config_file = output_dir / PLAYWRIGHT_CUSTOMCONFIG_JSON
+        custom_config_file = output_dir / settings.playwright_customconfig_file
         if not custom_config_file.exists():
             logger.error(f"{custom_config_file} not found")
             yield await sse_system_error(

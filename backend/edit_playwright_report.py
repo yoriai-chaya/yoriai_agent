@@ -130,14 +130,18 @@ def load_playwright_report(
 
 
 def create_summary_report_file(
-    suites: PlaywrightSuites, report_file_path: Path
+    suites: PlaywrightSuites,
+    report_file_path: Path,
+    log_func: Callable[[str], None] = print,
 ) -> FunctionResult:
+    log_func(f"create_summary_report_file called  report_file_path: {report_file_path}")
     output_file = report_file_path.with_name(
         f"{report_file_path.stem}_summary{report_file_path.suffix}"
     )
     try:
         output_file.write_text(
-            json.dumps(suites, indent=2, ensure_ascii=False), encoding="utf-8"
+            json.dumps(suites.model_dump(), indent=2, ensure_ascii=False),
+            encoding="utf-8",
         )
         result = FunctionResult(result=True)
         return result

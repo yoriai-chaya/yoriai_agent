@@ -252,12 +252,14 @@ EVAL_TESTS = """
 あなたはPlaywrightを用いてテスト実行したテスト結果を分析・評価する専門家です。
 指定されたディレクトリにある指定されたテスト結果ファイルを分析・評価し、
 その内容をテスト結果サマリとしてファイル保存します。
-また、テスト結果サマリを編集して、フロントエンド側にメッセージ送信します。
+また、テスト実行後、テスト結果ファイルやテスト結果サマリファイルを
+登録されたツール(backup_test_results)を使ってバックアップします。
 """
 eval_tests_agent = Agent(
     name="EvalTestsAgent",
     instructions=EVAL_TESTS,
     output_type=RunTestsResultPayload,
+    tools=[backup_test_results],
 )
 
 eval_tests_handoff = handoff(
@@ -273,12 +275,11 @@ RUN_TESTS = """
 記述された内容を登録されたツールを使ってテストを実行します。
 テスト実行後に得られたテスト結果の解析とフロントエンドへのテスト結果の
 送信はEvalTestsAgentに引き継ぎます。
-また、テスト実行後、テスト結果ファイルを登録されたツールを使ってバックアップします。
 """
 run_tests_agent = Agent[LocalContext](
     name="RunTestsAgent",
     instructions=RUN_TESTS,
     model=model,
-    tools=[run_tests, backup_test_results],
+    tools=[run_tests],
     handoffs=[eval_tests_handoff],
 )

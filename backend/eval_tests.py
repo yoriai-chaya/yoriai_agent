@@ -21,13 +21,15 @@ def eval_test_results(ctx: RunContextWrapper) -> RunTestsResultPayload:
 
     report_file: Path = output_dir / results_dir / playwright_report_file
     logger.debug(f"report_file: {report_file}")
-    result: LoadPlaywrightReport = load_playwright_report(str(report_file))
+    result: LoadPlaywrightReport = load_playwright_report(
+        str(report_file), logger.debug
+    )
     if not result.result:
         test_results = RunTestsResultPayload(result=False, detail=result.detail)
         return test_results
     if result.suites:
         create_result: FunctionResult = create_summary_report_file(
-            result.suites, report_file
+            result.suites, report_file, logger.debug
         )
         if not create_result.result:
             test_results = RunTestsResultPayload(

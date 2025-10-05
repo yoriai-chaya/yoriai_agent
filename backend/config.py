@@ -15,6 +15,7 @@ class Settings(BaseSettings):
     log_dir: str = "log"
     output_dir: Path = Path("output")
     test_results_dir: Path = Path("results")
+    playwright_customconfig_file: str = "playwright.customconfig.json"
     debug: bool = False
     code_gen_retry: int = 3
 
