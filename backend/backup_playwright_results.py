@@ -46,6 +46,7 @@ def save_playwright_results(ctx: RunContextWrapper):
             stat = src_path.stat()
             mtime = datetime.fromtimestamp(stat.st_mtime)
             timestamp = mtime.strftime("%Y%m%d_%H%M%S")
+            logger.debug(f"timestamp: {timestamp}")
 
             stem = src_path.stem
             ext = src_path.suffix

@@ -76,6 +76,7 @@ async def on_eval_tests(ctx: RunContextWrapper[LocalContext]) -> RunTestsResultP
     logger.debug("on_eval_tests called")
     test_results = eval_test_results(ctx=ctx)
     logger.debug(f"return test_results: {test_results}")
+    save_playwright_results(ctx=ctx)
     return test_results
 
 
@@ -181,15 +182,6 @@ async def run_tests(ctx: RunContextWrapper, test_dir: str, test_file: str):
     return result
 
 
-# Function Tools
-@function_tool
-async def backup_test_results(ctx: RunContextWrapper):
-    """Backup test info and report files."""
-    logger.debug("backup_test_results called")
-    save_playwright_results(ctx=ctx)
-    return
-
-
 # Agents
 file_save_agent = Agent(
     name="FileSaveAgent", instructions="ファイル保存を行うエージェント"
@@ -250,20 +242,17 @@ place_files_agent = Agent[LocalContext](
 # Agents
 EVAL_TESTS = """
 あなたはPlaywrightを用いてテスト実行したテスト結果を分析・評価する専門家です。
-指定されたディレクトリにある指定されたテスト結果ファイルを分析・評価し、
-その内容をテスト結果サマリとしてファイル保存します。
-また、テスト実行後、テスト結果ファイルやテスト結果サマリファイルを
-登録されたツール(backup_test_results)を使ってバックアップします。
+指定されたディレクトリにある指定されたテスト結果ファイルを分析・評価します。
 """
 eval_tests_agent = Agent(
     name="EvalTestsAgent",
     instructions=EVAL_TESTS,
+    model=model,
     output_type=RunTestsResultPayload,
-    tools=[backup_test_results],
 )
 
 eval_tests_handoff = handoff(
-    agent=file_save_agent,
+    agent=eval_tests_agent,
     on_handoff=on_eval_tests,
     tool_name_override="eval_tests",
     tool_description_override="Analyze and evaluate test results, edit results and send messages to the frond-end",

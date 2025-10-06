@@ -25,6 +25,7 @@ async def handler_run_tests(
     )
     logger.debug(f"result: {result}")
 
+    """
     json_path = Path("./output/results/playwright_report_summary.json")
     try:
         with json_path.open("r", encoding="utf-8") as f:
@@ -35,4 +36,5 @@ async def handler_run_tests(
         test_result_payload = RunTestsResultPayload(result=False, detail=str(e))
     yield await sse_event(EventType.TEST_RESULT, test_result_payload.model_dump())
 
+    """
     yield await sse_event(EventType.DONE, final_payload.model_dump())
