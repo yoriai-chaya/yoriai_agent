@@ -3,13 +3,10 @@ from pathlib import Path
 
 from agents import RunContextWrapper
 
-from base import PlaywrightSpecs, RunTestsResultPayload
 from logger import logger
 
 
-def run_playwright(
-    ctx: RunContextWrapper, test_dir: str, test_file: str
-) -> RunTestsResultPayload:
+def run_playwright(ctx: RunContextWrapper, test_dir: str, test_file: str) -> bool:
     logger.debug("run_playwright called")
 
     output_dir: Path = ctx.context.output_dir
@@ -31,8 +28,8 @@ def run_playwright(
         logger.debug(f"cmd_result.stdout: {cmd_result.stdout}")
         logger.debug(f"cmd_result.stderr: {cmd_result.stderr}")
     except Exception as e:
-        test_result = RunTestsResultPayload(result=False, detail=str(e))
-        return test_result
+        logger.error(f"Error running Playwright tests: {e}")
+        return False
 
-    test_result = RunTestsResultPayload(result=True, detail="xxx")
-    return test_result
+    logger.debug("run_playwright return")
+    return True

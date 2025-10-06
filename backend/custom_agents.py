@@ -165,7 +165,7 @@ async def place_files(
 
 # Function Tools
 @function_tool
-async def run_tests(ctx: RunContextWrapper, test_dir: str, test_file: str):
+async def run_tests(ctx: RunContextWrapper, test_dir: str, test_file: str) -> bool:
     """Run tests using playwright.
 
     Args:
@@ -241,8 +241,8 @@ place_files_agent = Agent[LocalContext](
 
 # Agents
 EVAL_TESTS = """
-あなたはPlaywrightを用いてテスト実行したテスト結果を分析・評価する専門家です。
-指定されたディレクトリにある指定されたテスト結果ファイルを分析・評価します。
+あなたはPlaywrightを用いてテスト実行したテスト結果をチェックする専門家です。
+指定されたディレクトリにある指定されたテスト結果ファイルを確認します。
 """
 eval_tests_agent = Agent(
     name="EvalTestsAgent",
@@ -255,20 +255,20 @@ eval_tests_handoff = handoff(
     agent=eval_tests_agent,
     on_handoff=on_eval_tests,
     tool_name_override="eval_tests",
-    tool_description_override="Analyze and evaluate test results, edit results and send messages to the frond-end",
+    tool_description_override="Check test results",
 )
 
 RUN_TESTS = """
 あなたはNext.jsのアプリケーションのテスト実行を行う専門家です。
 指定されたディレクトリにある指定されたテストプログラムファイルに
 記述された内容を登録されたツールを使ってテストを実行します。
-テスト実行後に得られたテスト結果の解析とフロントエンドへのテスト結果の
-送信はEvalTestsAgentに引き継ぎます。
+テスト実行が完了したら、eval_testsツールを使ってテスト結果を確認します。
 """
 run_tests_agent = Agent[LocalContext](
     name="RunTestsAgent",
     instructions=RUN_TESTS,
     model=model,
     tools=[run_tests],
+    output_type=bool,
     handoffs=[eval_tests_handoff],
 )

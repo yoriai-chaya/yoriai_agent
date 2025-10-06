@@ -11,7 +11,7 @@ from pydantic_settings import (
 class Settings(BaseSettings):
     openai_api_key: str
     openai_model: str = "gpt-4o-mini"
-    openai_max_turns: int = 2
+    openai_max_turns: int = 3
     log_dir: str = "log"
     output_dir: Path = Path("output")
     test_results_dir: Path = Path("results")
