@@ -152,11 +152,12 @@ const StreamEvent = ({ status, responseInfo }: StreamEventProps) => {
 
             // ----- test_result event -----
             if (isTestResultEvent(sr)) {
-              const result = sr.payload.result;
+              const payload = sr.payload;
+              const { result, total, ok, ng } = payload;
               const resultStr = result ? "OK" : "Error";
               const emoji = result ? Emoji.BLUE_CIRCLE : Emoji.RED_CIRCLE;
               return (
-                <div key={`agent-result-${idx}`}>
+                <div key={`test-result-${idx}`}>
                   <div className="grid grid-cols-6 items-center">
                     <div></div>
                     <div className="col-span-3 text-base ml-5">
@@ -165,6 +166,14 @@ const StreamEvent = ({ status, responseInfo }: StreamEventProps) => {
                     </div>
                     <div className="col-span-2 text-sm text-gray-500">
                       {formatDateTime(ev.r_time)}
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-6 items-center">
+                    <div></div>
+                    <div className="col-span-5 text-sm ml-9 text-gray-500">
+                      <pre>
+                        Total: {total} OK: {ok} NG: {ng}
+                      </pre>
                     </div>
                   </div>
                 </div>

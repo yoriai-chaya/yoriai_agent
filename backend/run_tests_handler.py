@@ -1,11 +1,11 @@
 from agents import ItemHelpers, Runner
 
 from base import (
-    AgentResultPayload,
     AgentUpdatePayload,
     DonePayload,
     DoneStatus,
     EventType,
+    RunTestsResultPayload,
     SystemError,
 )
 from custom_agents import run_tests_agent
@@ -42,17 +42,18 @@ async def handler_run_tests(
                     logger.debug("Event: tool_call_item")
                 elif event.item.type == "tool_call_output_item":
                     logger.debug(f"Event: tool_call_output_item : {event.item.output}")
-                    agent_result_payload = AgentResultPayload(
-                        result=True, error_detail=""
-                    )
-                    yield await sse_event(
-                        EventType.AGENT_RESULT, agent_result_payload.model_dump()
-                    )
                 elif event.item.type == "message_output_item":
                     logger.debug("Event: message_output_item")
-                    logger.debug(
-                        f"Message Output:\n {ItemHelpers.text_message_output(event.item)}"
+                    tests_result_str = ItemHelpers.text_message_output(event.item)
+                    logger.debug(f"tests_result_str: {tests_result_str}")
+                    tests_result_payload = RunTestsResultPayload.model_validate_json(
+                        tests_result_str
                     )
+                    logger.debug(f"tests_result_payload: {tests_result_payload}")
+                    if isinstance(tests_result_payload, RunTestsResultPayload):
+                        yield await sse_event(
+                            EventType.TEST_RESULT, tests_result_payload.model_dump()
+                        )
 
     except Exception as e:
         logger.error(f"Unexpected error: {e}")
@@ -63,16 +64,4 @@ async def handler_run_tests(
             status=DoneStatus.FAILED, message="run tests code error occurred"
         )
 
-    """
-    json_path = Path("./output/results/playwright_report_summary.json")
-    try:
-        with json_path.open("r", encoding="utf-8") as f:
-            report_summary = json.load(f)
-        test_result_payload = RunTestsResultPayload(**report_summary)
-    except Exception as e:
-        logger.error(f"Failed to load report summary: {e}")
-        test_result_payload = RunTestsResultPayload(result=False, detail=str(e))
-    yield await sse_event(EventType.TEST_RESULT, test_result_payload.model_dump())
-
-    """
     yield await sse_event(EventType.DONE, final_payload.model_dump())

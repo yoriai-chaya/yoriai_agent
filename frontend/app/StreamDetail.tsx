@@ -33,6 +33,11 @@ function isAgentResultEvent(
 ): event is Extract<StreamResponse, { event: typeof EventTypes.AGENT_RESULT }> {
   return event.event === EventTypes.AGENT_RESULT;
 }
+function isTestResultEvent(
+  event: StreamResponse
+): event is Extract<StreamResponse, { event: typeof EventTypes.TEST_RESULT }> {
+  return event.event === EventTypes.TEST_RESULT;
+}
 function isSystemErrorEvent(
   event: StreamResponse
 ): event is Extract<StreamResponse, { event: typeof EventTypes.SYSTEM_ERROR }> {
@@ -121,6 +126,74 @@ const StreamDetail = ({ status, responseInfo }: StreamDetailProps) => {
                         </div>
                       </>
                     )}
+                  </span>
+                </div>
+              );
+            }
+
+            // ----- test_result event -----
+            if (isTestResultEvent(sr)) {
+              const payload = sr.payload;
+              const { result, detail, name, file, total, ok, ng, specs } =
+                payload;
+              const resultStr = result ? "OK" : "Error";
+              return (
+                <div key={`test-result-${idx}`}>
+                  <span className="text-sm pl-2">
+                    check:{" "}
+                    {result ? (
+                      <>
+                        <span className="text-blue-500">{resultStr}</span>
+                      </>
+                    ) : (
+                      <>
+                        <span className="text-red-500">{resultStr}</span>
+                      </>
+                    )}
+                    <div className="text-sm pl-4">
+                      <span>
+                        Total:{total}, OK:{ok}, NG:{ng}
+                      </span>
+                      <div>Name: {name}</div>
+                      <div>File: {file}</div>
+                      <div>Error detail: {detail}</div>
+                      {specs && specs.length > 0 && (
+                        <div className="mt-1">
+                          <div className="font-semibold">Test Specs:</div>
+                          <ul className="pl-4 list-disc">
+                            {specs.map((spec, sIdx) => (
+                              <li
+                                key={`spec-${idx}-${sIdx}`}
+                                className="text-sm"
+                              >
+                                <div>
+                                  <span>Title:</span>
+                                  {spec.title}
+                                </div>
+                                <div>
+                                  Result:{" "}
+                                  {spec.result ? (
+                                    <span className="text-blue-500">OK</span>
+                                  ) : (
+                                    <span className="text-red-500">NG</span>
+                                  )}
+                                </div>
+                                {!spec.result && (
+                                  <div className="pl-4 text-gray-500">
+                                    {spec.error_summary && (
+                                      <div>Summary: {spec.error_summary}</div>
+                                    )}
+                                    {spec.error_message && (
+                                      <div>Message: {spec.error_message}</div>
+                                    )}
+                                  </div>
+                                )}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                    </div>
                   </span>
                 </div>
               );
