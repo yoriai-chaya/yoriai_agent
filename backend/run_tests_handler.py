@@ -1,5 +1,6 @@
-from agents import ItemHelpers, Runner
+from agents import Runner
 
+from agent_logger import AgentLogger
 from base import (
     AgentUpdatePayload,
     DonePayload,
@@ -15,7 +16,8 @@ from logger import logger
 async def handler_run_tests(
     prompt: str, context, settings, sse_event, wait_for_console_input
 ):
-    logger.info("RunTests handler called")
+    category = context.category
+    logger.info(f"[{category}] : Run Tests Handler started")
 
     final_payload = DonePayload(
         status=DoneStatus.COMPLETED, message="RunTests completed"
@@ -27,8 +29,8 @@ async def handler_run_tests(
             input=prompt,
             context=context,
             max_turns=context.max_turns,
+            hooks=AgentLogger(),
         )
-        logger.debug(f"result: {result}")
         async for event in result.stream_events():
             if event.type == "agent_updated_stream_event":
                 logger.debug(f"Agent updated: {event.new_agent.name}")
@@ -41,19 +43,14 @@ async def handler_run_tests(
                 if event.item.type == "tool_call_item":
                     logger.debug("Event: tool_call_item")
                 elif event.item.type == "tool_call_output_item":
-                    logger.debug(f"Event: tool_call_output_item : {event.item.output}")
+                    logger.debug("Event: tool_call_output_item")
                 elif event.item.type == "message_output_item":
                     logger.debug("Event: message_output_item")
-                    tests_result_str = ItemHelpers.text_message_output(event.item)
-                    logger.debug(f"tests_result_str: {tests_result_str}")
-                    tests_result_payload = RunTestsResultPayload.model_validate_json(
-                        tests_result_str
-                    )
-                    logger.debug(f"tests_result_payload: {tests_result_payload}")
-                    if isinstance(tests_result_payload, RunTestsResultPayload):
-                        yield await sse_event(
-                            EventType.TEST_RESULT, tests_result_payload.model_dump()
-                        )
+
+        final = result.final_output
+        logger.trace(f"final: {final}")
+        payload = RunTestsResultPayload.model_validate(final)
+        yield await sse_event(EventType.TEST_RESULT, payload.model_dump())
 
     except Exception as e:
         logger.error(f"Unexpected error: {e}")
@@ -64,4 +61,5 @@ async def handler_run_tests(
             status=DoneStatus.FAILED, message="run tests code error occurred"
         )
 
+    logger.info(f"[{category}] : Run Tests Handler completed")
     yield await sse_event(EventType.DONE, final_payload.model_dump())

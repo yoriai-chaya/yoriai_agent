@@ -16,6 +16,10 @@ message_format = "\
 <cyan>:{line} </cyan>\
 - <level>{message}</level>\
 "
-logger.add(sys.stderr, format=message_format, level="DEBUG")
-logfile_path = os.path.join(settings.log_dir, "yoriai.log")
-logger.add(logfile_path, format=message_format, rotation="5MB", level="DEBUG")
+logger.level("AGENT", no=7, color="<magenta><bold>")
+
+level = settings.log_level.upper()
+filename = settings.log_filename
+logger.add(sys.stderr, format=message_format, level=level)
+logfile_path = os.path.join(settings.log_dir, filename)
+logger.add(logfile_path, format=message_format, rotation="5MB", level=level)

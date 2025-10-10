@@ -25,8 +25,8 @@ def run_playwright(ctx: RunContextWrapper, test_dir: str, test_file: str) -> boo
         cmd_result = subprocess.run(
             command, cwd=output_dir, capture_output=True, text=True, check=False
         )
-        logger.debug(f"cmd_result.stdout: {cmd_result.stdout}")
-        logger.debug(f"cmd_result.stderr: {cmd_result.stderr}")
+        logger.trace(f"cmd_result.stdout: {cmd_result.stdout}")
+        logger.trace(f"cmd_result.stderr: {cmd_result.stderr}")
     except Exception as e:
         logger.error(f"Error running Playwright tests: {e}")
         return False

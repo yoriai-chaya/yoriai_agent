@@ -116,7 +116,7 @@ async def prompt_service(request: PromptRequest):
 # Create Session
 @app.post("/main")
 async def create_session(request: PromptRequest):
-    logger.info(f"[Main] create session request: {request}")
+    logger.trace(f"create session request: {request}")
     session_id = str(uuid4())
     sessions[session_id] = request.prompt
     logger.debug(f"session_id: {session_id}")
@@ -135,7 +135,7 @@ async def wait_for_console_input() -> bool:
 # Main Service
 @app.get("/main/stream/{session_id}")
 async def stream_service_get(session_id: str):
-    logger.info("[Main] stream_service_get called")
+    logger.debug("stream_service_get called")
     if session_id not in sessions:
         raise HTTPException(status_code=404, detail="session not found")
 
@@ -258,7 +258,7 @@ async def stream_service_get(session_id: str):
             yield await sse_failed_done("Invalid category", sse_event=sse_event)
             return
 
-        logger.debug(f"handler call: resolved_prompt: {resolved_prompt}")
+        logger.trace(f"handler call: resolved_prompt: {resolved_prompt}")
         async for event in handler(
             resolved_prompt, context, settings, sse_event, wait_for_console_input
         ):

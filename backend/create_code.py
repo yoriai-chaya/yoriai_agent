@@ -4,6 +4,7 @@ from agents import Runner
 from agents.exceptions import AgentsException, ModelBehaviorError
 from openai.types.responses import ResponseTextDeltaEvent
 
+from agent_logger import AgentLogger
 from base import EventType, LocalContext, PromptRequest, StreamResponse
 from config import get_settings
 from custom_agents import code_gen_agent
@@ -44,6 +45,7 @@ async def gen_code(request: PromptRequest, context: LocalContext):
             input=request.prompt,
             context=context,
             max_turns=context.max_turns,
+            hooks=AgentLogger(),
         )
         async for event in result.stream_events():
             if event.type == "raw_response_event":

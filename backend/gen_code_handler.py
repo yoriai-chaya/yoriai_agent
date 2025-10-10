@@ -11,6 +11,8 @@ from logger import logger
 async def handle_gen_code(
     prompt: str, context, settings, sse_event, wait_for_console_input
 ):
+    category = context.category
+    logger.info(f"[{category}]: Start Code Generation")
     # Make Payload (for Completed)
     final_payload = DonePayload(
         status=DoneStatus.COMPLETED, message="All Tasks Completed"
@@ -117,5 +119,5 @@ async def handle_gen_code(
             )
 
     # Done
+    logger.info(f"[{category}]: All Tasks Completed")
     yield await sse_event(EventType.DONE, final_payload.model_dump())
-    logger.debug("All Tasks Completed")

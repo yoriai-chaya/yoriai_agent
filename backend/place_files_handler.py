@@ -1,5 +1,6 @@
 from agents import ItemHelpers, Runner
 
+from agent_logger import AgentLogger
 from base import (
     AgentResult,
     AgentResultPayload,
@@ -15,7 +16,8 @@ from logger import logger
 async def handle_place_files(
     prompt: str, context, settings, sse_event, wait_for_console_input
 ):
-    logger.info("PlaceFiles handler called")
+    category = context.category
+    logger.info(f"[{category}]: PlaceFiles Handler Called")
 
     final_payload = DonePayload(
         status=DoneStatus.COMPLETED, message="PlaceFiles completed"
@@ -25,6 +27,7 @@ async def handle_place_files(
         input=prompt,
         context=context,
         max_turns=context.max_turns,
+        hooks=AgentLogger(),
     )
     async for event in result.stream_events():
         if event.type == "agent_updated_stream_event":
@@ -70,4 +73,5 @@ async def handle_place_files(
                     f"Message Output:\n {ItemHelpers.text_message_output(event.item)}"
                 )
 
+    logger.info(f"[{category}]: PlaceFiles Handler Completed")
     yield await sse_event(EventType.DONE, final_payload.model_dump())

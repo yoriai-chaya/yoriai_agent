@@ -71,15 +71,6 @@ async def on_save(ctx: RunContextWrapper[LocalContext], input_data: CodeSaveData
     return
 
 
-# Callback Functions
-async def on_eval_tests(ctx: RunContextWrapper[LocalContext]) -> RunTestsResultPayload:
-    logger.debug("on_eval_tests called")
-    test_results = eval_test_results(ctx=ctx)
-    logger.debug(f"return test_results: {test_results}")
-    save_playwright_results(ctx=ctx)
-    return test_results
-
-
 # Settings
 try:
     settings = get_settings()
@@ -165,12 +156,17 @@ async def place_files(
 
 # Function Tools
 @function_tool
-async def run_tests(ctx: RunContextWrapper, test_dir: str, test_file: str) -> bool:
+async def run_tests(
+    ctx: RunContextWrapper, test_dir: str, test_file: str
+) -> RunTestsResultPayload:
     """Run tests using playwright.
 
     Args:
         test_dir: directory containing test files
         test_file: test file name
+
+    Return:
+        RunTestsResultPayload: test results
 
     """
     logger.debug("run_tests called")
@@ -178,8 +174,18 @@ async def run_tests(ctx: RunContextWrapper, test_dir: str, test_file: str) -> bo
     logger.debug(f"output_dir: {output_dir}")
     logger.debug(f"test_dir: {test_dir}")
     logger.debug(f"test_file: {test_file}")
+
+    # Run Tests
     result = run_playwright(ctx=ctx, test_dir=test_dir, test_file=test_file)
-    return result
+    logger.debug(f"result: {result}")
+
+    # Evaluate
+    test_results = eval_test_results(ctx=ctx)
+    logger.trace(f"test_results: {test_results}")
+
+    # Save Backups
+    save_playwright_results(ctx=ctx)
+    return test_results
 
 
 # Agents
@@ -239,36 +245,15 @@ place_files_agent = Agent[LocalContext](
     tools=[place_files],
 )
 
-# Agents
-EVAL_TESTS = """
-あなたはPlaywrightを用いてテスト実行したテスト結果をチェックする専門家です。
-指定されたディレクトリにある指定されたテスト結果ファイルを確認します。
-"""
-eval_tests_agent = Agent(
-    name="EvalTestsAgent",
-    instructions=EVAL_TESTS,
-    model=model,
-    output_type=RunTestsResultPayload,
-)
-
-eval_tests_handoff = handoff(
-    agent=eval_tests_agent,
-    on_handoff=on_eval_tests,
-    tool_name_override="eval_tests",
-    tool_description_override="Check test results",
-)
-
 RUN_TESTS = """
 あなたはNext.jsのアプリケーションのテスト実行を行う専門家です。
 指定されたディレクトリにある指定されたテストプログラムファイルに
 記述された内容を登録されたツールを使ってテストを実行します。
-テスト実行が完了したら、eval_testsツールを使ってテスト結果を確認します。
 """
 run_tests_agent = Agent[LocalContext](
     name="RunTestsAgent",
     instructions=RUN_TESTS,
     model=model,
     tools=[run_tests],
-    output_type=bool,
-    handoffs=[eval_tests_handoff],
+    output_type=RunTestsResultPayload,
 )

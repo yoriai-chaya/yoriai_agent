@@ -47,5 +47,5 @@ def eval_test_results(ctx: RunContextWrapper) -> RunTestsResultPayload:
             specs=result.suites.specs.copy(),
         )
 
-    logger.debug(f"return test_results: {test_results}")
+    logger.debug("return test_results")
     return test_results
