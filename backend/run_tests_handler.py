@@ -51,6 +51,10 @@ async def handler_run_tests(
         logger.trace(f"final: {final}")
         payload = RunTestsResultPayload.model_validate(final)
         yield await sse_event(EventType.TEST_RESULT, payload.model_dump())
+        if not final.result:
+            final_payload = DonePayload(
+                status=DoneStatus.FAILED, message="RunTests failed"
+            )
 
     except Exception as e:
         logger.error(f"Unexpected error: {e}")

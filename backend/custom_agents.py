@@ -30,6 +30,8 @@ from eval_tests import eval_test_results
 from logger import logger
 from playwright_runner import run_playwright
 
+SNAPSHOT_ERROR_MESSAGE_PREF = "Error: A snapshot doesn't exist at"
+
 
 # Internal Functions
 def _backup_existing_file(target_dir: str, filename: str) -> None:
@@ -47,6 +49,22 @@ def _backup_existing_file(target_dir: str, filename: str) -> None:
         logger.debug(f"backup_path: {backup_path}")
         shutil.move(file_path, backup_path)
         logger.debug(f"Moved existing file to backup: {backup_path}")
+
+
+def _has_missing_snapshot_error(r: RunTestsResultPayload) -> bool:
+    logger.debug("_has_missing_snapshot_error called.")
+    if r.ng == 1:
+        if r.specs is None:
+            return False
+        for spec in r.specs:
+            if not spec.result:
+                logger.debug(f"spec.error_summary: {spec.error_summary}")
+                if spec.error_summary is None:
+                    return False
+                pref = spec.error_summary.startswith(SNAPSHOT_ERROR_MESSAGE_PREF)
+                if pref:
+                    return True
+    return False
 
 
 # Callback Functions
@@ -182,6 +200,15 @@ async def run_tests(
     # Evaluate
     test_results = eval_test_results(ctx=ctx)
     logger.trace(f"test_results: {test_results}")
+
+    is_snapshot_error = _has_missing_snapshot_error(test_results)
+    logger.debug(f"is_snapshot_error: {is_snapshot_error}")
+    if is_snapshot_error:
+        logger.debug("Re-running tests after snapshot update...")
+        result = run_playwright(ctx=ctx, test_dir=test_dir, test_file=test_file)
+        logger.debug(f"result: {result}")
+        test_results = eval_test_results(ctx=ctx)
+        logger.trace(f"test_results: {test_results}")
 
     # Save Backups
     save_playwright_results(ctx=ctx)

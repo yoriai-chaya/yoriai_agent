@@ -38,7 +38,7 @@ def eval_test_results(ctx: RunContextWrapper) -> RunTestsResultPayload:
             return test_results
 
         test_results = RunTestsResultPayload(
-            result=True,
+            result=result.suites.result,
             name=result.suites.name,
             file=result.suites.file,
             total=result.suites.total,
