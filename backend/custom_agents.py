@@ -196,6 +196,10 @@ async def run_tests(
     # Run Tests
     result = run_playwright(ctx=ctx, test_dir=test_dir, test_file=test_file)
     logger.debug(f"result: {result}")
+    if not result.result:
+        test_results = RunTestsResultPayload(result=False, detail=result.detail)
+        logger.debug(f"run_tests return : {test_results}")
+        return test_results
 
     # Evaluate
     test_results = eval_test_results(ctx=ctx)
@@ -212,6 +216,9 @@ async def run_tests(
 
     # Save Backups
     save_playwright_results(ctx=ctx)
+
+    # Return
+    logger.debug(f"run_tests return : {test_results}")
     return test_results
 
 
