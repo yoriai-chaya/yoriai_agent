@@ -14,19 +14,17 @@ from agents import (
 )
 from pydantic import ValidationError
 
-from backup_playwright_results import save_playwright_results
 from base import (
     AgentResult,
     CodeCheckResult,
     CodeGenResponse,
     CodeSaveData,
     CodeType,
+    FunctionResult,
     LocalContext,
-    RunTestsResultPayload,
 )
 from config import get_settings
 from eslint_checker import run_eslint
-from eval_tests import eval_test_results
 from logger import logger
 from playwright_runner import run_playwright
 
@@ -49,22 +47,6 @@ def _backup_existing_file(target_dir: str, filename: str) -> None:
         logger.debug(f"backup_path: {backup_path}")
         shutil.move(file_path, backup_path)
         logger.debug(f"Moved existing file to backup: {backup_path}")
-
-
-def _has_missing_snapshot_error(r: RunTestsResultPayload) -> bool:
-    logger.debug("_has_missing_snapshot_error called.")
-    if r.ng == 1:
-        if r.specs is None:
-            return False
-        for spec in r.specs:
-            if not spec.result:
-                logger.debug(f"spec.error_summary: {spec.error_summary}")
-                if spec.error_summary is None:
-                    return False
-                pref = spec.error_summary.startswith(SNAPSHOT_ERROR_MESSAGE_PREF)
-                if pref:
-                    return True
-    return False
 
 
 # Callback Functions
@@ -176,7 +158,7 @@ async def place_files(
 @function_tool
 async def run_tests(
     ctx: RunContextWrapper, test_dir: str, test_file: str
-) -> RunTestsResultPayload:
+) -> FunctionResult:
     """Run tests using playwright.
 
     Args:
@@ -184,7 +166,7 @@ async def run_tests(
         test_file: test file name
 
     Return:
-        RunTestsResultPayload: test results
+        FunctionResult: execute command result
 
     """
     logger.debug("run_tests called")
@@ -196,30 +178,10 @@ async def run_tests(
     # Run Tests
     result = run_playwright(ctx=ctx, test_dir=test_dir, test_file=test_file)
     logger.debug(f"result: {result}")
-    if not result.result:
-        test_results = RunTestsResultPayload(result=False, detail=result.detail)
-        logger.debug(f"run_tests return : {test_results}")
-        return test_results
-
-    # Evaluate
-    test_results = eval_test_results(ctx=ctx)
-    logger.trace(f"test_results: {test_results}")
-
-    is_snapshot_error = _has_missing_snapshot_error(test_results)
-    logger.debug(f"is_snapshot_error: {is_snapshot_error}")
-    if is_snapshot_error:
-        logger.debug("Re-running tests after snapshot update...")
-        result = run_playwright(ctx=ctx, test_dir=test_dir, test_file=test_file)
-        logger.debug(f"result: {result}")
-        test_results = eval_test_results(ctx=ctx)
-        logger.trace(f"test_results: {test_results}")
-
-    # Save Backups
-    save_playwright_results(ctx=ctx)
 
     # Return
-    logger.debug(f"run_tests return : {test_results}")
-    return test_results
+    logger.debug(f"run_tests return : {result}")
+    return result
 
 
 # Agents
@@ -289,5 +251,5 @@ run_tests_agent = Agent[LocalContext](
     instructions=RUN_TESTS,
     model=model,
     tools=[run_tests],
-    output_type=RunTestsResultPayload,
+    output_type=FunctionResult,
 )

@@ -83,6 +83,7 @@ class LocalContext(BaseModel):
     playwright_report_file: str
     playwright_report_summary_file: str
     test_file: str
+    before_mtime: float
 
 
 class ESLintInfo(BaseModel):

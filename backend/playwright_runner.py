@@ -4,6 +4,7 @@ from pathlib import Path
 from agents import RunContextWrapper
 
 from base import FunctionResult
+from common import save_backup
 from logger import logger
 
 
@@ -20,9 +21,20 @@ def run_playwright(
     logger.debug(f"test_file: {test_file}")
 
     ctx.context.test_file = test_file
-
     test_path = output_dir / test_dir / test_file
     logger.debug(f"test_path: {str(test_path)}")
+
+    playwright_report_file = ctx.context.playwright_report_file
+    logger.debug(f"playwright_report_file: {playwright_report_file}")
+    playwright_report_file_path: Path = (
+        output_dir / results_dir / playwright_report_file
+    )
+    if playwright_report_file_path.exists():
+        ctx.context.before_mtime = playwright_report_file_path.stat().st_mtime
+    logger.debug(f"ctx.context.before_mtime: {ctx.context.before_mtime}")
+
+    # Execute npx playwright command
+    flg_404 = False
     command = ["npx", "playwright", "test", str(test_path)]
     try:
         process = subprocess.Popen(
@@ -40,6 +52,7 @@ def run_playwright(
             logger.debug(f"process.stdout line: {line}")
             if '"status":404' in line:
                 error_detected = "Detected 404 in test output"
+                flg_404 = True
                 break
             if "Error:" in line and "already used" in line:
                 error_detected = "Playwright server port already in use"
@@ -58,6 +71,25 @@ def run_playwright(
     return_code = process.returncode
     err_msg = f"Playwright exited with return code: {return_code}"
     logger.debug(err_msg)
+
+    # Backup
+    if not flg_404:
+        logger.debug("not flg_404 : backup info/report file")
+        dir = output_dir / results_dir
+        info_file = ctx.context.playwright_info_file
+        report_file = ctx.context.playwright_report_file
+        logger.debug(f"dir: {dir}")
+        logger.debug(f"info_file: {info_file}")
+        logger.debug(f"report_file: {report_file}")
+        try:
+            save_backup(dir=dir, src_file=info_file)
+            save_backup(dir=dir, src_file=report_file)
+        except Exception as e:
+            logger.error(f"Faild backup: {e}")
+            func_result = FunctionResult(result=False, detail=err_msg)
+            return func_result
+
+    # Return
     if return_code != 0:
         func_result = FunctionResult(result=False, detail=err_msg)
         return func_result

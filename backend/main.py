@@ -22,6 +22,7 @@ from base import (
     StartedStatus,
     SystemError,
 )
+from common import resolve_path
 from config import get_settings
 from gen_code_handler import handle_gen_code
 from logger import logger
@@ -31,25 +32,6 @@ from run_tests_handler import handler_run_tests
 
 
 # Internal Functions
-def _resolve_path(path_str: str) -> Path:
-    logger.debug(f"_resolve_path called: {path_str}")
-    p = Path(path_str)
-    if p.is_absolute():
-        # Absolute path
-        if not p.exists():
-            raise FileNotFoundError(f"Path '{path_str}' not found")
-        logger.debug(f"Absolute path resolved: {p}")
-        return p
-    # Relative path
-    base = Path().resolve()
-    logger.debug(f"base: {base}")
-    abs_path = (base / p).resolve()
-    logger.debug(f"abs_path: {abs_path}")
-    if not abs_path.exists():
-        raise FileNotFoundError(f"Path '{abs_path}' not found")
-    return abs_path
-
-
 def _resolve_placeholders(prompt: str, context: LocalContext) -> str:
     def replacer(match):
         logger.debug("replacer called")
@@ -168,7 +150,7 @@ async def stream_service_get(session_id: str):
             return
 
         try:
-            output_dir = _resolve_path(settings.output_dir)
+            output_dir = resolve_path(settings.output_dir)
         except Exception as e:
             logger.error(f"_resolve_path error: {e}")
             yield await sse_system_error(
@@ -227,6 +209,7 @@ async def stream_service_get(session_id: str):
             playwright_report_file=playwright_report_file,
             playwright_report_summary_file=playwright_report_summary_file,
             test_file="dummy.spec.ts",
+            before_mtime=0,
         )
 
         try:

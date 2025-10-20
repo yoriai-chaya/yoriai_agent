@@ -6,10 +6,10 @@ from base import (
     DonePayload,
     DoneStatus,
     EventType,
-    RunTestsResultPayload,
     SystemError,
 )
 from custom_agents import run_tests_agent
+from eval_tests import eval_test_results
 from logger import logger
 
 
@@ -49,8 +49,12 @@ async def handler_run_tests(
 
         final = result.final_output
         logger.trace(f"final: {final}")
-        payload = RunTestsResultPayload.model_validate(final)
-        yield await sse_event(EventType.TEST_RESULT, payload.model_dump())
+
+        # Evaluate
+        test_results = eval_test_results(context=context)
+        logger.trace(f"test_results: {test_results}")
+        yield await sse_event(EventType.TEST_RESULT, test_results.model_dump())
+
         if not final.result:
             final_payload = DonePayload(
                 status=DoneStatus.FAILED, message="RunTests failed"
