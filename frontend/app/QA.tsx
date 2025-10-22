@@ -1,12 +1,12 @@
 "use client";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { Send } from "lucide-react";
+import { SendHorizontal } from "lucide-react";
 import StreamEvent from "./StreamEvent";
 import { Action, FileInfo, PromptRequest } from "./types";
 import { ResponseInfo, StreamResponse, EventTypes } from "./types";
 import { formatDateTime } from "./util";
-import { useRef } from "react";
+import { useState, useRef } from "react";
 
 interface QAProps {
   status: string;
@@ -27,6 +27,7 @@ const QA = ({
 }: QAProps) => {
   // useRef
   const esRef = useRef<EventSource | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string>("");
 
   // Environments
   const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
@@ -59,6 +60,7 @@ const QA = ({
       esRef.current.close();
       esRef.current = null;
     }
+    setErrorMessage("");
     try {
       // Create Session
       const requestBody: PromptRequest = { prompt: fileInfo.content };
@@ -193,6 +195,7 @@ const QA = ({
       });
     } catch (error) {
       console.log("Error sending: ", error);
+      setErrorMessage("Failed to connect to server");
     }
   };
 
@@ -212,8 +215,9 @@ const QA = ({
             <Button
               onClick={sendPrompt}
               disabled={status === "Sended" || status === "Done"}
+              variant="ghost"
             >
-              <Send className="w-4 h-4 mr-2" />
+              <SendHorizontal className="w-4 h-4 mr-2 text-ctm-blue-500" />
             </Button>
           </div>
           {/* --- mtime row --- */}
@@ -224,6 +228,18 @@ const QA = ({
           {/* column-C,D,E */}
           <div className="col-span-3 text-sm">
             {formatDateTime(fileInfo.mtime)}
+          </div>
+          {/* column-F */}
+          <div></div>
+
+          {/* --- error message row --- */}
+          {/* column-A */}
+          <div></div>
+          {/* column-B,C,D,E */}
+          <div className="col-span-4 text-sm">
+            {errorMessage && (
+              <div className="text-red-500 mt-2">{errorMessage}</div>
+            )}
           </div>
           {/* column-F */}
           <div></div>

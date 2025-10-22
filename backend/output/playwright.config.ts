@@ -2,12 +2,13 @@ import { defineConfig, devices } from "@playwright/test";
 import path from "path";
 import customConfig from "./playwright.customconfig.json";
 const base_url = customConfig.base_url;
+const screenshot_dir = customConfig.screenshot_dir;
 const results = path.join(__dirname, customConfig.results);
 const playwright_report_file = customConfig.playwright_report_file;
 
 export default defineConfig({
   testDir: "tests",
-  snapshotPathTemplate: path.join(results, "{testFilePath}/{arg}{ext}"),
+  snapshotPathTemplate: path.join(results, screenshot_dir + "/{arg}{ext}"),
   timeout: 9_000,
   use: {
     baseURL: base_url,

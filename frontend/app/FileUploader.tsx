@@ -47,7 +47,7 @@ const FileUploader = ({
     <div className="grid grid-cols-6 items-center gap-2 mb-2">
       {/* column-A */}
       <div>
-        <Avatar>
+        <Avatar className="bg-blue-100">
           <AvatarImage src="/you.png" />
           <AvatarFallback>Yo</AvatarFallback>
         </Avatar>
@@ -63,7 +63,11 @@ const FileUploader = ({
             className="hidden"
             onChange={handleFileChange}
           />
-          <Button type="button" onClick={handleSelectClick}>
+          <Button
+            className="bg-ctm-blue-500 hover:bg-ctm-blue-600"
+            type="button"
+            onClick={handleSelectClick}
+          >
             Prompt File
           </Button>
         </div>
