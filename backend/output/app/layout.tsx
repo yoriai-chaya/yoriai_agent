@@ -1,15 +1,12 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Kosugi_Maru } from "next/font/google";
 import "./globals.css";
+import TailwindIndicator from "./TailwindIndicator";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const kosugi_maru = Kosugi_Maru({
+  variable: "--font-kosugi-maru",
   subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
+  weight: ["400"],
 });
 
 export const metadata: Metadata = {
@@ -23,11 +20,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased` } className="font-kosugi-maru"
-      >
+    <html lang="jp" style={kosugi_maru.style}>
+      <body>
         {children}
+        <TailwindIndicator />
       </body>
     </html>
   );
