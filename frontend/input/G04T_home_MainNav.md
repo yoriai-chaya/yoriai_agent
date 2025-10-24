@@ -7,7 +7,7 @@ Playwright用のフロントエンドアプリケーションのテストプロ�
 ## テストプログラムの要求仕様
 
 - テスト対象アプリケーション概要: Next.js, TypeScript, TailwindCSS, shadcn/uiにて作成したホーム画面
-- 作成するテストプログラムファイル: tests/home.spec.ts
+- 作成するテストプログラムファイル: tests/home_main.spec.ts
 
 ## テスト対象アプリケーションファイル
 {{file:app/page.tsx}}
@@ -16,24 +16,31 @@ Playwright用のフロントエンドアプリケーションのテストプロ�
 - "/"
 
 ## テストケース
-テストケースとして以下の５ケースを作成する。
+テストケースとして以下の６ケースを作成する。
 
 ### テストグループ
-- テストグループ名: "Home Basic Test"
+- テストグループ名: "Home Basic Test with MainNav"
 
 ### テストケース1
+- テストケース名: "Check MainNav Visible"
+- MainNavコンポーネント: TestId="main-nav"でロケータを取得
+- MainNavコンポーネントが存在・表示されていること(toBeVisible)
+- MobileNavコンポーネント: TestId="mobile-nav"でロケータを取得
+- MobileNavコンポーネントが非表示であること(toBeHidden)
+
+### テストケース2
 - テストケース名: "Check home container"
 - TestId="home-container"でロケータを取得
 - コンテナクラスが存在・表示されていること(toBeVisible)
 - "max-w-2xl"クラスが指定されていること(toHaveClass)
 - "mx-auto"クラスが指定されていること(toHaveClass)
 
-### テストケース2
+### テストケース3
 - テストケース名: "Check hero image"
 - TestId="home-hero-image"でロケータを取得
 - imgタグにアタッチできること(toBeAttached)
 
-### テストケース3
+### テストケース4
 - テストケース名: "Check title"
 - TestId="home-title"でロケータを取得
 - 以下のテキストが存在すること
@@ -42,25 +49,23 @@ Playwright用のフロントエンドアプリケーションのテストプロ�
 
 - "text-center"クラスが指定されていること(toHaveClass)
 
-### テストケース4
+### テストケース5
 - テストケース名: "Check description"
 - TestId="home-description"でロケータを取得
 - 以下のテキストで始まるテキストが存在すること(toHaveText)
 
 東京の中心にありながら、
 
-### テストケース5
+### テストケース6
 - テストケース名: "Save screen capture"
 - 表示画面のスクリーンショットを取得する
-- ファイル名: home.png
+- ファイル名: homeMainNav.png
 
 
 ## 指示事項
-
-### 指示1
 生成したプログラムは以下のディレクトリに以下のファイル名で保存すること。
 directory: tests
-filename: home.spec.ts
+filename: home_main.spec.ts
 
 # Prerequisites
 

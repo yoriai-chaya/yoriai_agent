@@ -39,6 +39,12 @@ async def on_save(ctx: RunContextWrapper[LocalContext], input_data: CodeSaveData
     logger.debug(f"target_dir: {str(target_dir)}")
     target_dir.mkdir(exist_ok=True)
 
+    # Save backup
+    target_path = target_dir / input_data.filename
+    logger.debug(f"target_path: {str(target_path)}")
+    if target_path.exists():
+        save_backup(target_dir, input_data.filename)
+
     # Save file
     file_path = os.path.join(target_dir, input_data.filename)
     with open(file_path, "w", encoding="utf-8") as f:
@@ -47,9 +53,6 @@ async def on_save(ctx: RunContextWrapper[LocalContext], input_data: CodeSaveData
     response = CodeGenResponse(
         result=True, detail="saved successfully", code=input_data.code
     )
-
-    # Save backup
-    save_backup(target_dir, input_data.filename)
 
     # Return
     ctx.context.response = response
