@@ -1,12 +1,9 @@
-import shutil
 import subprocess
-from datetime import datetime
 from pathlib import Path
 from subprocess import CompletedProcess
 
+from common import save_backup
 from logger import logger
-
-BACKUP_DIR = "backup"
 
 
 def run_cmd(command: list[str], output_path: Path, cwd: str) -> CompletedProcess:
@@ -18,27 +15,12 @@ def run_cmd(command: list[str], output_path: Path, cwd: str) -> CompletedProcess
     if not output_dir.exists():
         raise FileNotFoundError(f"Output directory does not exist: {output_dir}")
 
-    # Create results and backup directory
-    results_dir = output_dir
-    backup_dir = results_dir / BACKUP_DIR
-    logger.debug(f"results_dir: {results_dir}")
-    logger.debug(f"backup_dir: {backup_dir}")
-    backup_dir.mkdir(exist_ok=True)
-
     # for backup
+    logger.debug(f"output_path: {output_path}")
+    filename = output_path.name
+    logger.debug(f"filename: {filename}")
     if output_path.exists():
-        mtime = datetime.fromtimestamp(output_path.stat().st_mtime)
-        timestamp = mtime.strftime("%Y%m%d_%H%M%S")
-
-        stem = output_path.stem
-        suffix = output_path.suffix.lstrip(".")
-
-        backup_filename = f"{stem}_{timestamp}.{suffix}"
-        backup_path = results_dir / backup_dir / backup_filename
-        logger.debug(f"backup_path: {backup_path}")
-
-        shutil.copy2(output_path, backup_path)
-        logger.debug(f"backup created: {backup_path}")
+        save_backup(output_dir, filename)
 
     with output_path.open("w", encoding="utf-8") as f:
         result = subprocess.run(

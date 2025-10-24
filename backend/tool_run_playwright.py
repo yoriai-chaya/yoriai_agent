@@ -7,7 +7,9 @@ from config import get_settings
 from logger import logger
 
 
-def run_playwright_tests(test_file: str, output_dir: Path, results: Path) -> int:
+def run_playwright_tests(
+    test_file: str, output_dir: Path, results: Path, project: str
+) -> int:
     logger.debug("run_playwright_tests() called")
     project_root = Path(__file__).resolve().parent
     results_dir = output_dir / results
@@ -15,13 +17,21 @@ def run_playwright_tests(test_file: str, output_dir: Path, results: Path) -> int
     logger.debug(f"project_root: {project_root}")
     logger.debug(f"results_dir: {results_dir}")
     logger.debug(f"test_file: {test_file}")
+    logger.debug(f"project: {project}")
 
+    # base command
     command = [
         "npx",
         "playwright",
         "test",
-        test_file,
     ]
+    # add project option if specified
+    if project:
+        prj_option = f"--project={project}"
+        command.extend([prj_option])
+
+    # append test file
+    command.append(test_file)
 
     try:
         process = subprocess.Popen(
@@ -61,8 +71,17 @@ def run_playwright_tests(test_file: str, output_dir: Path, results: Path) -> int
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Run Playwright Tool")
-    parser.add_argument("-f", "--file", required=True, help="Run Playwright Tool")
+    parser.add_argument(
+        "-f", "--file", required=True, help="Test file to run (e.g. xxx.spec.ts)"
+    )
+    parser.add_argument(
+        "-p",
+        "--project",
+        required=False,
+        help="Specify Playwright project name (optional)",
+    )
     args = parser.parse_args()
+
     if not args.file:
         parser.print_usage()
         sys.exit(1)
@@ -73,5 +92,5 @@ if __name__ == "__main__":
     my_name = Path(__file__).name
     logger.info(f"{my_name} Started")
     logger.debug(f"file: {args.file}, output_dir: {output_dir}, results: {results}")
-    return_code = run_playwright_tests(args.file, output_dir, results)
+    return_code = run_playwright_tests(args.file, output_dir, results, args.project)
     logger.info(f"{my_name} Ended return_code: {return_code}")

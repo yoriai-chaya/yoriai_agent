@@ -1,7 +1,6 @@
 import os
 import shutil
 import sys
-from datetime import datetime
 from pathlib import Path
 from typing import List
 
@@ -23,6 +22,7 @@ from base import (
     FunctionResult,
     LocalContext,
 )
+from common import save_backup
 from config import get_settings
 from eslint_checker import run_eslint
 from logger import logger
@@ -31,33 +31,14 @@ from playwright_runner import run_playwright
 SNAPSHOT_ERROR_MESSAGE_PREF = "Error: A snapshot doesn't exist at"
 
 
-# Internal Functions
-def _backup_existing_file(target_dir: str, filename: str) -> None:
-    file_path = os.path.join(target_dir, filename)
-    if os.path.exists(file_path):
-        backup_dir = os.path.join(target_dir, "backup")
-        logger.debug(f"backup_dir: {backup_dir}")
-        os.makedirs(backup_dir, exist_ok=True)
-
-        base, ext = os.path.splitext(filename)
-        dt_str = datetime.now().strftime("%Y%m%d_%H%M%S")
-        backup_file = f"{base}_{dt_str}{ext}"
-        logger.debug(f"backup_file: {backup_file}")
-        backup_path = os.path.join(backup_dir, backup_file)
-        logger.debug(f"backup_path: {backup_path}")
-        shutil.move(file_path, backup_path)
-        logger.debug(f"Moved existing file to backup: {backup_path}")
-
-
 # Callback Functions
 async def on_save(ctx: RunContextWrapper[LocalContext], input_data: CodeSaveData):
     logger.debug("on_save called")
-    base_output = str(ctx.context.output_dir)
-    logger.debug(f"base_output: {base_output}")
-    target_dir = os.path.join(base_output, input_data.directory)
-    os.makedirs(target_dir, exist_ok=True)
-
-    _backup_existing_file(target_dir, input_data.filename)
+    output_dir = Path(str(ctx.context.output_dir))
+    target_dir = output_dir / input_data.directory
+    logger.debug(f"target_dir: {str(target_dir)}")
+    target_dir.mkdir(exist_ok=True)
+    save_backup(target_dir, input_data.filename)
 
     file_path = os.path.join(target_dir, input_data.filename)
     with open(file_path, "w", encoding="utf-8") as f:
@@ -142,11 +123,13 @@ async def place_files(
                 )
             dst = os.path.join(abs_to, os.path.basename(src))
 
-            _backup_existing_file(abs_to, os.path.basename(src))
-
             logger.debug(f"dst: {dst}")
             shutil.copy2(src, dst)
             logger.debug(f"Copied {src} -> {dst}")
+
+            filename = Path(src).name
+            logger.debug(f"filename: {filename}")
+            save_backup(Path(abs_to), filename)
 
         return result
 
@@ -157,13 +140,14 @@ async def place_files(
 # Function Tools
 @function_tool
 async def run_tests(
-    ctx: RunContextWrapper, test_dir: str, test_file: str
+    ctx: RunContextWrapper, test_dir: str, test_file: str, project: str
 ) -> FunctionResult:
     """Run tests using playwright.
 
     Args:
         test_dir: directory containing test files
         test_file: test file name
+        project: project name
 
     Return:
         FunctionResult: execute command result
@@ -174,9 +158,12 @@ async def run_tests(
     logger.debug(f"output_dir: {output_dir}")
     logger.debug(f"test_dir: {test_dir}")
     logger.debug(f"test_file: {test_file}")
+    logger.debug(f"project: {project}")
 
     # Run Tests
-    result = run_playwright(ctx=ctx, test_dir=test_dir, test_file=test_file)
+    result = run_playwright(
+        ctx=ctx, test_dir=test_dir, test_file=test_file, project=project
+    )
     logger.debug(f"result: {result}")
 
     # Return

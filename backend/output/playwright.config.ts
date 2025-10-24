@@ -18,8 +18,28 @@ export default defineConfig({
 
   projects: [
     {
-      name: "chromium",
-      use: { ...devices["Desktop Chrome"] },
+      name: "chromium-main",
+      use: {
+        browserName: "chromium",
+        launchOptions: {
+          args: ["--window-size=1280,800"],
+        },
+        // @ts-expect-error viewport is duplicated intentionally
+        viewport: null,
+        ...devices["Desktop Chrome"],
+      },
+    },
+    {
+      name: "chromium-mobile",
+      use: {
+        browserName: "chromium",
+        launchOptions: {
+          args: ["--window-size=393,852"],
+        },
+        // @ts-expect-error viewport is duplicated intentionally
+        viewport: null,
+        ...devices["iPhone 16"],
+      },
     },
   ],
 

@@ -29,8 +29,6 @@ Next.js, TailwindCSS, shadcn/ui を用いてフロントエンドのプログラ
 
 ### 要素01
 - 画像ファイル「hotel.png」は別途配置する（生成不要）
-- 画像ファイルの取り込み方法
-  src={hotel}ではなく、import hotel from "@/public/hotel.png"とする
 - 画像ファイルのアスペクト比: 512 x 512
 - 幅：横幅いっぱいに描画、高さ：自動調整
 - テストID：home-hero-image
@@ -71,5 +69,6 @@ filename: page.tsx
 - 生成するコード形式はいわゆる"rafce"形式(=ReactArrowFunctionExportComponent)で生成すること
 - 関数名は「Home」とし、その型(React.FC)は明示しないこと
 - 各要素にはテスト自動化のためのテストID「data-testid」を付与し、「各要素の詳細」で指定したテストIDの値を付与すること
+- 画像ファイルの取り込み方法は、「CommonJS」形式ではなく「ECMAscript」形式とする。すなわち、requre()は使わず、import文を使用すること。
 
 

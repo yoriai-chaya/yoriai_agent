@@ -9,7 +9,7 @@ from logger import logger
 
 
 def run_playwright(
-    ctx: RunContextWrapper, test_dir: str, test_file: str
+    ctx: RunContextWrapper, test_dir: str, test_file: str, project: str
 ) -> FunctionResult:
     logger.debug("run_playwright called")
 
@@ -35,7 +35,12 @@ def run_playwright(
 
     # Execute npx playwright command
     flg_404 = False
-    command = ["npx", "playwright", "test", str(test_path)]
+    command = ["npx", "playwright", "test"]
+    if project:
+        prj_option = f"--project={project}"
+        command.extend([prj_option])
+    command.append(str(test_path))
+    logger.debug(f"command: {command}")
     try:
         process = subprocess.Popen(
             command,
