@@ -21,18 +21,40 @@
   --color-ctm-navy-800: oklch(0.1761 0.049 266.47);
 
   /* for Markdown component */
-  --text-md-h1: 18px;
-  --text-md-h1--line-height: 20px;
-  --text-md-h2: 16px;
-  --text-md-h2--line-height: 18px;
+  --text-md-h1: 16px;
+  --text-md-h1--line-height: 18px;
+  --text-md-h2: 15px;
+  --text-md-h2--line-height: 17px;
   --text-md-h3: 14px;
   --text-md-h3--line-height: 16px;
-  --text-md-code: 8px;
-  --text-md-code--line-height: 10px;
-  --text-md-ul: 10px;
-  --text-md-ul--line-height: 12px;
-  --text-md-ol: 10px;
-  --text-md-ol--line-height: 12px;
-  --text-md-body: 10px;
-  --text-md-body--line-height: 12px;
+  --text-md-h4: 13px;
+  --text-md-h4--line-height: 15px;
+  --text-md-h5: 12px;
+  --text-md-h5--line-height: 13px;
+  --text-md-h6: 11px;
+  --text-md-h6--line-height: 13px;
+  --text-md-code: 10px;
+  --text-md-code--line-height: 12px;
+  --text-md-ul: 12px;
+  --text-md-ul--line-height: 14px;
+  --text-md-ol: 12px;
+  --text-md-ol--line-height: 14px;
+  --text-md-body: 12px;
+  --text-md-body--line-height: 14px;
+
+  /* for Application component */
+  --text-app-step: 20px;
+  --text-app-step--line-height: 24px;
+  --text-app-avatar: 18px;
+  --text-app-avatar--line-height: 20px;
+  --text-app-info: 14px;
+  --text-app-info--line-height: 18px;
+  --text-app-agent: 16px;
+  --text-app-agent--line-height: 20px;
+  --text-app-time: 12px;
+  --text-app-time--line-height: 18px;
+  --text-app-detail: 12px;
+  --text-app-detail--line-height: 18px;
+  --text-app-emoji: 13px;
+  --text-app-emoji--line-height: 18px;
 }

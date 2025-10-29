@@ -207,9 +207,9 @@ const QA = ({
           {/* column-A */}
           <div></div>
           {/* column-B */}
-          <div className="text-gray-500 text-sm">filename:</div>
+          <div className="text-gray-500 text-app-info">filename:</div>
           {/* column-C,D,E */}
-          <div className="col-span-3 text-sm">{fileInfo.filename}</div>
+          <div className="col-span-3 text-app-info">{fileInfo.filename}</div>
           {/* column-F */}
           <div className="col-span-1 row-span-2">
             <Button
@@ -224,9 +224,9 @@ const QA = ({
           {/* column-A */}
           <div></div>
           {/* column-B */}
-          <div className="text-gray-500 text-sm">mtime:</div>
+          <div className="text-gray-500 text-app-info">mtime:</div>
           {/* column-C,D,E */}
-          <div className="col-span-3 text-sm">
+          <div className="col-span-3 text-app-time text-gray-700">
             {formatDateTime(fileInfo.mtime)}
           </div>
           {/* column-F */}
@@ -236,7 +236,7 @@ const QA = ({
           {/* column-A */}
           <div></div>
           {/* column-B,C,D,E */}
-          <div className="col-span-4 text-sm">
+          <div className="col-span-4 text-app-info">
             {errorMessage && (
               <div className="text-red-500 mt-2">{errorMessage}</div>
             )}
@@ -256,7 +256,7 @@ const QA = ({
             </Avatar>
           </div>
           {/* column-B */}
-          <span>Assistant</span>
+          <span className="text-app-avatar">Assistant</span>
           {/* column-C,D,E,F */}
           <div className="col-span-4"></div>
 

@@ -69,7 +69,7 @@ export default function App() {
         <div ref={leftPanel}>
           {state.steps.map((step, index) => (
             <div key={index}>
-              <p className="text-xl my-2">
+              <p className="text-app-step my-2">
                 Step {index} - Status: {step.status}
               </p>
               <FileUploader
@@ -96,7 +96,7 @@ export default function App() {
         <div ref={rightPanel}>
           {state.steps.map((step, index) => (
             <div key={index}>
-              <p className="text-xl my-2">
+              <p className="text-app-step my-2">
                 Step {index} - Status: {step.status}
               </p>
               <ShowPrompt

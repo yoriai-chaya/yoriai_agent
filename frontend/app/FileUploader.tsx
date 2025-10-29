@@ -53,7 +53,7 @@ const FileUploader = ({
         </Avatar>
       </div>
       {/* column-B */}
-      <span className="col-span-1">You</span>
+      <span className="col-span-1 text-app-avatar">You</span>
       {/* column-C,D,E */}
       {(status === "Unloaded" || status === "Loaded") && (
         <div className="col-span-3">

@@ -67,11 +67,11 @@ const StreamEvent = ({ status, responseInfo }: StreamEventProps) => {
                 <div key={`started-${idx}`}>
                   <div className="grid grid-cols-6 items-center">
                     <div></div>
-                    <div className="col-span-3 text-base">
-                      <span className="text-[12px] pr-2">{emoji}</span>
+                    <div className="col-span-3 text-app-agent">
+                      <span className="text-app-emoji pr-2">{emoji}</span>
                       {sr.payload.status}
                     </div>
-                    <div className="col-span-2 text-sm text-gray-500">
+                    <div className="col-span-2 text-app-time text-gray-500">
                       {formatDateTime(ev.r_time)}
                     </div>
                   </div>
@@ -87,11 +87,11 @@ const StreamEvent = ({ status, responseInfo }: StreamEventProps) => {
                 <div key={`agent-${idx}`}>
                   <div className="grid grid-cols-6 items-center">
                     <div></div>
-                    <div className="col-span-3 text-base">
-                      <span className="text-[12px] pr-2">{emoji}</span>
+                    <div className="col-span-3 text-app-agent">
+                      <span className="text-app-emoji pr-2">{emoji}</span>
                       {agentName}
                     </div>
-                    <div className="col-span-2 text-sm text-gray-500">
+                    <div className="col-span-2 text-app-time text-gray-500">
                       {formatDateTime(ev.r_time)}
                     </div>
                   </div>
@@ -109,19 +109,19 @@ const StreamEvent = ({ status, responseInfo }: StreamEventProps) => {
                 <div key={`check-${idx}`}>
                   <div className="grid grid-cols-6 items-center">
                     <div></div>
-                    <div className="col-span-3 text-base ml-5">
-                      <span className="text-[12px] pr-1">{emoji}</span>
+                    <div className="col-span-3 text-app-info ml-5">
+                      <span className="text-app-emoji pr-1">{emoji}</span>
                       <span>
                         {sr.payload.checker} check: {result_str}
                       </span>
                     </div>
-                    <div className="col-span-2 text-sm text-gray-500">
+                    <div className="col-span-2 text-app-time text-gray-500">
                       {formatDateTime(ev.r_time)}
                     </div>
                   </div>
                   <div className="grid grid-cols-6 items-center">
                     <div></div>
-                    <div className="col-span-5 text-sm ml-9 text-gray-500">
+                    <div className="col-span-5 text-app-detail ml-9 text-gray-500">
                       {rule_id}
                     </div>
                   </div>
@@ -138,11 +138,11 @@ const StreamEvent = ({ status, responseInfo }: StreamEventProps) => {
                 <div key={`agent-result-${idx}`}>
                   <div className="grid grid-cols-6 items-center">
                     <div></div>
-                    <div className="col-span-3 text-base ml-5">
-                      <span className="text-[12px] pr-1">{emoji}</span>
+                    <div className="col-span-3 text-app-info ml-5">
+                      <span className="text-app-emoji pr-1">{emoji}</span>
                       <span>result: {resultStr}</span>
                     </div>
-                    <div className="col-span-2 text-sm text-gray-500">
+                    <div className="col-span-2 text-app-time text-gray-500">
                       {formatDateTime(ev.r_time)}
                     </div>
                   </div>
@@ -160,17 +160,17 @@ const StreamEvent = ({ status, responseInfo }: StreamEventProps) => {
                 <div key={`test-result-${idx}`}>
                   <div className="grid grid-cols-6 items-center">
                     <div></div>
-                    <div className="col-span-3 text-base ml-5">
-                      <span className="text-[12px] pr-1">{emoji}</span>
+                    <div className="col-span-3 text-app-info ml-5">
+                      <span className="text-app-emoji pr-1">{emoji}</span>
                       <span>result: {resultStr}</span>
                     </div>
-                    <div className="col-span-2 text-sm text-gray-500">
+                    <div className="col-span-2 text-app-time text-gray-500">
                       {formatDateTime(ev.r_time)}
                     </div>
                   </div>
                   <div className="grid grid-cols-6 items-center">
                     <div></div>
-                    <div className="col-span-5 text-sm ml-9 text-gray-500">
+                    <div className="col-span-5 text-app-detail ml-9 text-gray-500">
                       <pre>
                         Total: {total} OK: {ok} NG: {ng}
                       </pre>
@@ -190,11 +190,11 @@ const StreamEvent = ({ status, responseInfo }: StreamEventProps) => {
                 <div key={`done-${idx}`}>
                   <div className="grid grid-cols-6 items-center">
                     <div></div>
-                    <div className="col-span-3 text-base">
-                      <span className="text-[12px] pr-2">{emoji}</span>
+                    <div className="col-span-3 text-app-agent">
+                      <span className="text-app-emoji pr-2">{emoji}</span>
                       {sr.payload.status}
                     </div>
-                    <div className="col-span-2 text-sm text-gray-500">
+                    <div className="col-span-2 text-app-time text-gray-500">
                       {formatDateTime(ev.r_time)}
                     </div>
                   </div>
@@ -209,11 +209,11 @@ const StreamEvent = ({ status, responseInfo }: StreamEventProps) => {
                 <div key={`system-error-${idx}`}>
                   <div className="grid grid-cols-6 items-center">
                     <div></div>
-                    <div className="col-span-3 text-base ml-5">
-                      <span className="text-[12px] pr-1">{emoji}</span>
+                    <div className="col-span-3 text-app-info ml-5">
+                      <span className="text-app-emoji pr-1">{emoji}</span>
                       <span>{error}</span>
                     </div>
-                    <div className="col-span-2 text-sm text-gray-500">
+                    <div className="col-span-2 text-app-time text-gray-500">
                       {formatDateTime(ev.r_time)}
                     </div>
                   </div>

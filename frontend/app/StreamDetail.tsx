@@ -51,7 +51,7 @@ const StreamDetail = ({ status, responseInfo }: StreamDetailProps) => {
     <div>
       {(status === "Sended" || status === "Done") && (
         <div>
-          <p className="text-lg my-1">Response</p>
+          <p className="text-app-info my-1">Response</p>
           {events.map((ev: ResponseEvent, idx: number) => {
             const sr = ev.s_res;
             // ----- agent_update event -----
@@ -59,7 +59,7 @@ const StreamDetail = ({ status, responseInfo }: StreamDetailProps) => {
               const agentName = sr.payload.agent_name;
               return (
                 <div key={`agent_update-${idx}`}>
-                  <div className="text-sm">{agentName}</div>
+                  <div className="text-app-detail">{agentName}</div>
                 </div>
               );
             }
@@ -70,7 +70,7 @@ const StreamDetail = ({ status, responseInfo }: StreamDetailProps) => {
               const filePath = sr.payload.file_path;
               return (
                 <div key={`code-${idx}`}>
-                  <div className="text-sm pl-2">Filepath: {filePath}</div>
+                  <div className="text-app-detail pl-2">Filepath: {filePath}</div>
                   <Card className="my-2 p-1 bg-gray-200 rounded-sm shadow-md">
                     <div className="flex overflow-x-auto">
                       <Markdown markdown={code} />
@@ -88,15 +88,15 @@ const StreamDetail = ({ status, responseInfo }: StreamDetailProps) => {
               const detail = sr.payload.detail;
               return (
                 <div key={`check-${idx}`}>
-                  <span className="text-sm pl-2">
+                  <span className="text-app-detail pl-2">
                     {checker} check:{" "}
                     {result ? (
                       <span className="text-blue-500">{result_str}</span>
                     ) : (
                       <>
                         <span className="text-red-500">{result_str}</span>
-                        <div className="text-sm pl-4">rule: {rule_id}</div>
-                        <div className="text-sm pl-4">detail: {detail}</div>
+                        <div className="text-app-detail pl-4">rule: {rule_id}</div>
+                        <div className="text-app-detail pl-4">detail: {detail}</div>
                       </>
                     )}
                   </span>
@@ -111,7 +111,7 @@ const StreamDetail = ({ status, responseInfo }: StreamDetailProps) => {
               const error_detail = sr.payload.error_detail;
               return (
                 <div key={`agent-result-${idx}`}>
-                  <span className="text-sm pl-2">
+                  <span className="text-app-detail pl-2">
                     {result ? (
                       <>
                         <span>result: </span>
@@ -121,7 +121,7 @@ const StreamDetail = ({ status, responseInfo }: StreamDetailProps) => {
                       <>
                         <span>result: </span>
                         <span className="text-red-500">{resultStr}</span>
-                        <div className="text-sm pl-4">
+                        <div className="text-app-detail pl-4">
                           detail: {error_detail}
                         </div>
                       </>
@@ -139,7 +139,7 @@ const StreamDetail = ({ status, responseInfo }: StreamDetailProps) => {
               const resultStr = result ? "OK" : "Error";
               return (
                 <div key={`test-result-${idx}`}>
-                  <span className="text-sm pl-2">
+                  <span className="text-app-detail pl-2">
                     check:{" "}
                     {result ? (
                       <>
@@ -150,7 +150,7 @@ const StreamDetail = ({ status, responseInfo }: StreamDetailProps) => {
                         <span className="text-red-500">{resultStr}</span>
                       </>
                     )}
-                    <div className="text-sm pl-4">
+                    <div className="text-app-detail pl-4">
                       <span>
                         Total:{total}, OK:{ok}, NG:{ng}
                       </span>
@@ -164,7 +164,7 @@ const StreamDetail = ({ status, responseInfo }: StreamDetailProps) => {
                             {specs.map((spec, sIdx) => (
                               <li
                                 key={`spec-${idx}-${sIdx}`}
-                                className="text-sm"
+                                className="text-app-detail"
                               >
                                 <div>
                                   <span>Title:</span>
@@ -205,7 +205,7 @@ const StreamDetail = ({ status, responseInfo }: StreamDetailProps) => {
               const detail = sr.payload.detail;
               return (
                 <div key={`system-error-${idx}`}>
-                  <div className="text-sm pl-2">
+                  <div className="text-app-detail pl-2">
                     <div>{error}</div>
                     <div>{detail}</div>
                   </div>

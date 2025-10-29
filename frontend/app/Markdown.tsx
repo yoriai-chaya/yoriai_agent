@@ -20,7 +20,13 @@ const Markdown: React.FC<Props> = ({ markdown }) => {
                 ? "text-md-h1"
                 : t.level === 2
                 ? "text-md-h2"
-                : "text-md-h3";
+                : t.level === 3
+                ? "text-md-h3"
+                : t.level === 4
+                ? "text-md-h4"
+                : t.level === 5
+                ? "text-md-h5"
+                : "text-md-h6";
             return (
               <Tag key={i} className={`${sizeClass} font-bold my-2`}>
                 {t.content}
