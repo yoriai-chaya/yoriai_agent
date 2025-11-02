@@ -89,6 +89,16 @@ export type CheckResultItem = {
   r_time: Date;
 };
 
+export type Mode = "Manual" | "Auto";
+
+export type TaskYaml = {
+  task_name: string;
+  steps: {
+    title: string;
+    prompt_file: string;
+  }[];
+};
+
 export enum Emoji {
   WHITE_CIRCLE = "\u26AA", // ⚪
   RED_CIRCLE = "\u{1F534}", // 🔴

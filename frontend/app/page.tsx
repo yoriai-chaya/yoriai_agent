@@ -6,7 +6,8 @@ import FileUploader from "./FileUploader";
 import QA from "./QA";
 import ShowPrompt from "./ShowPrompt";
 import StreamDetail from "./StreamDetail";
-import { State, FileInfo, ResponseInfo } from "./types";
+import Header from "./Header";
+import { State, FileInfo, ResponseInfo, Mode } from "./types";
 import { reducer } from "./reducer";
 
 const initialState: State = {
@@ -22,6 +23,7 @@ export default function App() {
   const [fileInfo, setFileInfo] = useState<FileInfo[]>(initialFileInfo);
   const [responseInfo, setResponseInfo] =
     useState<ResponseInfo[]>(initialResponseInfo);
+  const [mode, setMode] = useState<Mode>("Manual");
   useEffect(() => {
     console.log("fileInfo updated: ", fileInfo);
     scrollRightPanel();
@@ -63,55 +65,66 @@ export default function App() {
   };
 
   return (
-    <div className="flex h-screen">
-      {/* Left-Panel */}
-      <ScrollArea className="w-1/2 p-4 border-r space-y-4">
-        <div ref={leftPanel}>
-          {state.steps.map((step, index) => (
-            <div key={index}>
-              <p className="text-app-step my-2">
-                Step {index} - Status: {step.status}
-              </p>
-              <FileUploader
-                index={index}
-                status={step.status}
-                dispatch={dispatch}
-                setFileInfo={setFileInfo}
-              />
-              <QA
-                index={index}
-                status={step.status}
-                dispatch={dispatch}
-                fileInfo={fileInfo[index]}
-                setResponseInfo={setResponseInfo}
-                responseInfo={responseInfo[index]}
-              />
-              <Separator />
-            </div>
-          ))}
-        </div>
-      </ScrollArea>
-      {/* Right-Panel */}
-      <ScrollArea className="w-1/2 p-4 border-r space-y-4">
-        <div ref={rightPanel}>
-          {state.steps.map((step, index) => (
-            <div key={index}>
-              <p className="text-app-step my-2">
-                Step {index} - Status: {step.status}
-              </p>
-              <ShowPrompt
-                index={index}
-                status={step.status}
-                fileInfo={fileInfo}
-              />
-              <StreamDetail
-                status={step.status}
-                responseInfo={responseInfo[index]}
-              />
-            </div>
-          ))}
-        </div>
-      </ScrollArea>
+    <div>
+      {/* Header */}
+      <Header
+        mode={mode}
+        setMode={setMode}
+        dispatch={dispatch}
+        setFileInfo={setFileInfo}
+      />
+
+      {/* Main Area */}
+      <div className="flex h-screen pt-18">
+        {/* Left-Panel */}
+        <ScrollArea className="w-1/2 p-4 border-r space-y-4">
+          <div ref={leftPanel}>
+            {state.steps.map((step, index) => (
+              <div key={index}>
+                <p className="text-app-step my-2">
+                  Step {index} - Status: {step.status}
+                </p>
+                <FileUploader
+                  index={index}
+                  status={step.status}
+                  dispatch={dispatch}
+                  setFileInfo={setFileInfo}
+                />
+                <QA
+                  index={index}
+                  status={step.status}
+                  dispatch={dispatch}
+                  fileInfo={fileInfo[index]}
+                  setResponseInfo={setResponseInfo}
+                  responseInfo={responseInfo[index]}
+                />
+                <Separator />
+              </div>
+            ))}
+          </div>
+        </ScrollArea>
+        {/* Right-Panel */}
+        <ScrollArea className="w-1/2 p-4 border-r space-y-4">
+          <div ref={rightPanel}>
+            {state.steps.map((step, index) => (
+              <div key={index}>
+                <p className="text-app-step my-2">
+                  Step {index} - Status: {step.status}
+                </p>
+                <ShowPrompt
+                  index={index}
+                  status={step.status}
+                  fileInfo={fileInfo}
+                />
+                <StreamDetail
+                  status={step.status}
+                  responseInfo={responseInfo[index]}
+                />
+              </div>
+            ))}
+          </div>
+        </ScrollArea>
+      </div>
     </div>
   );
 }
