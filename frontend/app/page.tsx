@@ -9,6 +9,7 @@ import StreamDetail from "./StreamDetail";
 import Header from "./Header";
 import { State, FileInfo, ResponseInfo, Mode } from "./types";
 import { reducer } from "./reducer";
+import AutoBlock from "./AutoBlock";
 
 const initialState: State = {
   steps: [{ status: "Unloaded" }],
@@ -65,19 +66,21 @@ export default function App() {
   };
 
   return (
-    <div>
+    <div className="flex flex-col h-screen overflow-hidden">
       {/* Header */}
-      <Header
-        mode={mode}
-        setMode={setMode}
-        dispatch={dispatch}
-        setFileInfo={setFileInfo}
-      />
+      <Header mode={mode} setMode={setMode} />
 
       {/* Main Area */}
-      <div className="flex h-screen pt-18">
+      <div className="flex flex-1 overflow-hidden">
+        {/* Side-Panel */}
+        <ScrollArea className="w-3/15 p-4 border-r space-y-4">
+          <div>
+            <p>Auto Mode Panel</p>
+            <AutoBlock dispatch={dispatch} setFileInfo={setFileInfo} />
+          </div>
+        </ScrollArea>
         {/* Left-Panel */}
-        <ScrollArea className="w-1/2 p-4 border-r space-y-4">
+        <ScrollArea className="w-6/15 p-4 border-r space-y-4">
           <div ref={leftPanel}>
             {state.steps.map((step, index) => (
               <div key={index}>
@@ -104,7 +107,7 @@ export default function App() {
           </div>
         </ScrollArea>
         {/* Right-Panel */}
-        <ScrollArea className="w-1/2 p-4 border-r space-y-4">
+        <ScrollArea className="w-6/15 p-4 border-r space-y-4">
           <div ref={rightPanel}>
             {state.steps.map((step, index) => (
               <div key={index}>

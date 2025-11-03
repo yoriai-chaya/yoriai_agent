@@ -42,7 +42,7 @@ const PromptFilelistLoader = ({ setMdFiles }: Props) => {
   };
 
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex flex-col">
       <div>
         <Button
           onClick={() => setOpen(true)}
@@ -60,13 +60,6 @@ const PromptFilelistLoader = ({ setMdFiles }: Props) => {
       <div>
         {selectedFile && (
           <div className="text-app-info text-gray-700">{selectedFile.name}</div>
-        )}
-      </div>
-      <div>
-        {selectedFile && (
-          <div className="text-app-time text-gray-500">
-            {selectedFile.mtime}
-          </div>
         )}
       </div>
     </div>

@@ -4,6 +4,8 @@ import StatusBadge from "./StatusBadge";
 import PromptFilelistLoader from "./PromptFilelistLoader";
 import { RhiMdInfo } from "@/lib/types";
 import { Action, FileInfo } from "./types";
+import { Play } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 interface AutoBlockProps {
   dispatch: React.Dispatch<Action>;
@@ -13,31 +15,33 @@ interface AutoBlockProps {
 const AutoBlock = ({ dispatch, setFileInfo }: AutoBlockProps) => {
   const status = "idle";
   const [mdFiles, setMdFiles] = useState<RhiMdInfo[]>([]);
+
+  const handlePlay = async () => {
+    console.log("handlePlay called");
+  };
   return (
     <div className="mx-4">
-      <div className="grid grid-cols-2 grid-rows-2 gap-x-2">
-        {/* A1 + B1*/}
-        <div className="col-span-2 row-start-1">
+      <div className="flex flex-col">
+        <div>
           <PromptFilelistLoader setMdFiles={setMdFiles} />
         </div>
-        {/* A2 */}
-        <div className="col-start-1 row-start-2">Play button</div>
-        {/* B2 */}
-        <div className="col-start-2 row-start-2">
+        <div>
           <StatusBadge status={status} />
+        </div>
+        <div>
+          <Button onClick={handlePlay} variant="ghost" size="icon">
+            <Play />
+          </Button>
         </div>
       </div>
       {/* Debug表示 */}
-      {/*
-      <div className="mt-4 text-sm text-gray-600">
+      <div className="text-xs text-gray-600">
         {mdFiles.map((file) => (
           <div key={file.name}>
-            <p> 📄 {file.name}</p>
-            <p className="text-gray-500 text-xs">mtime: {file.mtime}</p>
+            <p>{file.name}</p>
           </div>
         ))}
       </div>
-      */}
     </div>
   );
 };
