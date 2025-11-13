@@ -43,7 +43,10 @@ export type TestResultPayload = {
 };
 
 export type StreamResponse =
-  | { event: "started"; payload: { status: string; message: string } }
+  | {
+      event: "started";
+      payload: { status: string; message: string; step_id: string };
+    }
   | {
       event: "code";
       payload: { language: string; code: string; file_path: string };

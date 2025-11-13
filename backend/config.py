@@ -20,6 +20,7 @@ class Settings(BaseSettings):
     code_gen_retry: int = 3
     log_filename: str = "yoriai.log"
     log_level: str = "AGENT"
+    archive_dir: Path = Path("archive")
 
     model_config = SettingsConfigDict(
         env_file=os.path.join(os.path.dirname(__file__), ".env")

@@ -54,6 +54,7 @@ def run_eslint(ctx: RunContextWrapper, filename: str) -> CodeCheckResult:
     command = ["npx", "eslint", str(file_path), "--format", "./eslint.formatter.mjs"]
     try:
         result = run_cmd(
+            ctx=ctx,
             command=command,
             output_path=output_path,
             cwd=str(eslint_dir),

@@ -7,7 +7,7 @@ from base import (
     LocalContext,
     RunTestsResultPayload,
 )
-from common import save_backup
+from common import archive
 from edit_playwright_report import create_summary_report_file, load_playwright_report
 from logger import logger
 
@@ -98,9 +98,14 @@ def eval_test_results(context: LocalContext) -> RunTestsResultPayload:
         create_result: FunctionResult = create_summary_report_file(
             result.suites, report_path
         )
-        dir = output_dir / results_dir
+        src_dir = output_dir / results_dir
         try:
-            save_backup(dir=dir, src_file=playwright_report_summary_file)
+            archive(
+                src_dir=src_dir,
+                src_file=playwright_report_summary_file,
+                dir=Path("./playwright"),
+                stepid_dir=context.stepid_dir,
+            )
         except Exception as e:
             logger.error(f"Failed backup: {e}")
             test_results = RunTestsResultPayload(

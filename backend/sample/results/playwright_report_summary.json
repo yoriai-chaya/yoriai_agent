@@ -1,0 +1,45 @@
+{
+  "name": "Home Basic Test",
+  "file": "home.spec.ts",
+  "result": true,
+  "total": 5,
+  "ok": 5,
+  "ng": 0,
+  "specs": [
+    {
+      "title": "Check home container",
+      "result": true,
+      "error_summary": null,
+      "error_message": null,
+      "error_stack": null
+    },
+    {
+      "title": "Check hero image",
+      "result": true,
+      "error_summary": null,
+      "error_message": null,
+      "error_stack": null
+    },
+    {
+      "title": "Check title",
+      "result": true,
+      "error_summary": null,
+      "error_message": null,
+      "error_stack": null
+    },
+    {
+      "title": "Check description",
+      "result": true,
+      "error_summary": null,
+      "error_message": null,
+      "error_stack": null
+    },
+    {
+      "title": "Save screen capture",
+      "result": true,
+      "error_summary": null,
+      "error_message": null,
+      "error_stack": null
+    }
+  ]
+}

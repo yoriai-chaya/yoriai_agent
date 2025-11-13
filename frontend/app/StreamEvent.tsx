@@ -66,6 +66,7 @@ const StreamEvent = ({ status, responseInfo }: StreamEventProps) => {
               return (
                 <div key={`started-${idx}`}>
                   <div className="grid grid-cols-6 items-center">
+                    {/* first row*/}
                     <div></div>
                     <div className="col-span-3 text-app-agent">
                       <span className="text-app-emoji pr-2">{emoji}</span>
@@ -73,6 +74,14 @@ const StreamEvent = ({ status, responseInfo }: StreamEventProps) => {
                     </div>
                     <div className="col-span-2 text-app-time text-gray-500">
                       {formatDateTime(ev.r_time)}
+                    </div>
+                    {/* second row*/}
+                    <div></div>
+                    <div className="col-span-5 text-app-info ml-5">
+                      <span className="text-app-emoji pr-1">{emoji}</span>
+                      <span className="text-ctm-blue-500">
+                        {sr.payload.step_id}
+                      </span>
                     </div>
                   </div>
                 </div>

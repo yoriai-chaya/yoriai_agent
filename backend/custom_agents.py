@@ -22,7 +22,7 @@ from base import (
     FunctionResult,
     LocalContext,
 )
-from common import save_backup
+from common import archive
 from config import get_settings
 from eslint_checker import run_eslint
 from logger import logger
@@ -39,12 +39,6 @@ async def on_save(ctx: RunContextWrapper[LocalContext], input_data: CodeSaveData
     logger.debug(f"target_dir: {str(target_dir)}")
     target_dir.mkdir(exist_ok=True)
 
-    # Save backup
-    target_path = target_dir / input_data.filename
-    logger.debug(f"target_path: {str(target_path)}")
-    if target_path.exists():
-        save_backup(target_dir, input_data.filename)
-
     # Save file
     file_path = os.path.join(target_dir, input_data.filename)
     with open(file_path, "w", encoding="utf-8") as f:
@@ -52,6 +46,14 @@ async def on_save(ctx: RunContextWrapper[LocalContext], input_data: CodeSaveData
     logger.debug(f"Saved file at {file_path}")
     response = CodeGenResponse(
         result=True, detail="saved successfully", code=input_data.code
+    )
+
+    # Archive
+    src_dir: Path = target_dir
+    stepid_dir = ctx.context.stepid_dir
+    dir = Path(input_data.directory)
+    archive(
+        src_dir=src_dir, src_file=input_data.filename, stepid_dir=stepid_dir, dir=dir
     )
 
     # Return
@@ -134,10 +136,6 @@ async def place_files(
             logger.debug(f"dst: {dst}")
             shutil.copy2(src, dst)
             logger.debug(f"Copied {src} -> {dst}")
-
-            filename = Path(src).name
-            logger.debug(f"filename: {filename}")
-            save_backup(Path(abs_to), filename)
 
         return result
 

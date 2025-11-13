@@ -2,11 +2,15 @@ import subprocess
 from pathlib import Path
 from subprocess import CompletedProcess
 
-from common import save_backup
+from agents import RunContextWrapper
+
+from common import archive
 from logger import logger
 
 
-def run_cmd(command: list[str], output_path: Path, cwd: str) -> CompletedProcess:
+def run_cmd(
+    ctx: RunContextWrapper, command: list[str], output_path: Path, cwd: str
+) -> CompletedProcess:
     logger.debug("run_cmd called")
 
     # Check output directory
@@ -15,16 +19,21 @@ def run_cmd(command: list[str], output_path: Path, cwd: str) -> CompletedProcess
     if not output_dir.exists():
         raise FileNotFoundError(f"Output directory does not exist: {output_dir}")
 
-    # for backup
+    # Run command
     logger.debug(f"output_path: {output_path}")
-    filename = output_path.name
-    logger.debug(f"filename: {filename}")
-    if output_path.exists():
-        save_backup(output_dir, filename)
-
     with output_path.open("w", encoding="utf-8") as f:
         result = subprocess.run(
             command, cwd=cwd, stdout=f, stderr=subprocess.PIPE, text=True
         )
+
+    # Archive
+    filename = output_path.name
+    logger.debug(f"filename: {filename}")
+    archive(
+        src_dir=output_dir,
+        src_file=filename,
+        stepid_dir=ctx.context.stepid_dir,
+        dir=Path("eslint"),
+    )
 
     return result

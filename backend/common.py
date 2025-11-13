@@ -1,5 +1,4 @@
 import shutil
-from datetime import datetime
 from pathlib import Path
 
 from logger import logger
@@ -24,20 +23,25 @@ def resolve_path(path_str: str) -> Path:
     return abs_path
 
 
-def save_backup(dir: Path, src_file: str):
-    logger.debug("save_backup called")
-    src_path = dir / src_file
-    logger.debug(f"src_path : {src_path}")
-    if not src_path.exists():
-        logger.error(f"src_file does not exist : {src_path}")
-        raise FileNotFoundError(f"source file not found: {src_path}")
-    backup_dir = dir / "backup"
-    backup_dir.mkdir(parents=True, exist_ok=True)
+def archive(src_dir: Path, src_file: str, stepid_dir: Path, dir: Path):
+    """
+    archive: back up the generated source files, test report files, etc.
 
-    stat = src_path.stat()
-    mtime = datetime.fromtimestamp(stat.st_mtime)
-    timestamp = mtime.strftime("%Y%m%d_%H%M%S")
-    backup_path = backup_dir / f"{timestamp}_{src_file}"
+    Args:
+        src_dir: directory of source file
+        src_file: source file to be backed up
+        stepid_dir: stepid directory (contained in the local context)
+        dir: relative directory from stepid_dir
+    """
+    logger.debug("archive called")
+    src_path = src_dir / src_file
+    logger.debug(f"src_path : {src_path}")
+
+    backup_dir = stepid_dir / dir
+    logger.debug(f"backup_dir : {backup_dir}")
+    backup_dir.mkdir(exist_ok=True)
+    backup_path = backup_dir / src_file
+
     try:
         shutil.copy2(str(src_path), str(backup_path))
         logger.debug(f"backup: {src_path.name} -> {backup_path.name}")

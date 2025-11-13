@@ -4,7 +4,7 @@ from pathlib import Path
 from agents import RunContextWrapper
 
 from base import FunctionResult
-from common import save_backup
+from common import archive
 from logger import logger
 
 
@@ -80,15 +80,25 @@ def run_playwright(
     # Backup
     if not flg_404:
         logger.debug("not flg_404 : backup info/report file")
-        dir = output_dir / results_dir
+        src_dir = output_dir / results_dir
         info_file = ctx.context.playwright_info_file
         report_file = ctx.context.playwright_report_file
         logger.debug(f"dir: {dir}")
         logger.debug(f"info_file: {info_file}")
         logger.debug(f"report_file: {report_file}")
         try:
-            save_backup(dir=dir, src_file=info_file)
-            save_backup(dir=dir, src_file=report_file)
+            archive(
+                src_dir=src_dir,
+                src_file=info_file,
+                stepid_dir=ctx.context.stepid_dir,
+                dir=Path("./playwright"),
+            )
+            archive(
+                src_dir=src_dir,
+                src_file=report_file,
+                stepid_dir=ctx.context.stepid_dir,
+                dir=Path("./playwright"),
+            )
         except Exception as e:
             logger.error(f"Faild backup: {e}")
             func_result = FunctionResult(result=False, detail=err_msg)

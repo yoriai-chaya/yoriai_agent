@@ -1,0 +1,273 @@
+{
+  "config": {
+    "configFile": "/home/takashi/dev03/test37/backend/output/playwright.config.ts",
+    "rootDir": "/home/takashi/dev03/test37/backend/output/tests",
+    "forbidOnly": false,
+    "fullyParallel": false,
+    "globalSetup": null,
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 0,
+    "metadata": {
+      "actualWorkers": 1
+    },
+    "preserveOutput": "always",
+    "reporter": [
+      [
+        "json",
+        {
+          "outputFile": "/home/takashi/dev03/test37/backend/output/results/playwright_report.json"
+        }
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "quiet": false,
+    "projects": [
+      {
+        "outputDir": "/home/takashi/dev03/test37/backend/output/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "chromium-main",
+        "name": "chromium-main",
+        "testDir": "/home/takashi/dev03/test37/backend/output/tests",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 9000
+      },
+      {
+        "outputDir": "/home/takashi/dev03/test37/backend/output/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "chromium-mobile",
+        "name": "chromium-mobile",
+        "testDir": "/home/takashi/dev03/test37/backend/output/tests",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 9000
+      }
+    ],
+    "shard": null,
+    "updateSnapshots": "missing",
+    "updateSourceMethod": "patch",
+    "version": "1.55.0",
+    "workers": 4,
+    "webServer": {
+      "command": "npm run dev",
+      "url": "http://localhost:3003",
+      "reuseExistingServer": false
+    }
+  },
+  "suites": [
+    {
+      "title": "home.spec.ts",
+      "file": "home.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "Home Basic Test",
+          "file": "home.spec.ts",
+          "line": 5,
+          "column": 6,
+          "specs": [
+            {
+              "title": "Check home container",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 9000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium-main",
+                  "projectName": "chromium-main",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 722,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2025-11-12T22:13:53.022Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "d318381359a9b96acb1e-0d4b363f53c49de8094c",
+              "file": "home.spec.ts",
+              "line": 6,
+              "column": 9
+            },
+            {
+              "title": "Check hero image",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 9000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium-main",
+                  "projectName": "chromium-main",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 6,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2025-11-12T22:13:54.592Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "d318381359a9b96acb1e-ac6c0686393884d96f47",
+              "file": "home.spec.ts",
+              "line": 13,
+              "column": 9
+            },
+            {
+              "title": "Check title",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 9000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium-main",
+                  "projectName": "chromium-main",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 13,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2025-11-12T22:13:54.611Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "d318381359a9b96acb1e-3455b7546ce6d0c30909",
+              "file": "home.spec.ts",
+              "line": 18,
+              "column": 9
+            },
+            {
+              "title": "Check description",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 9000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium-main",
+                  "projectName": "chromium-main",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 17,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2025-11-12T22:13:54.642Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "d318381359a9b96acb1e-a7684b86381f8d0f68c9",
+              "file": "home.spec.ts",
+              "line": 24,
+              "column": 9
+            },
+            {
+              "title": "Save screen capture",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 9000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium-main",
+                  "projectName": "chromium-main",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 526,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2025-11-12T22:13:54.673Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "d318381359a9b96acb1e-5d9ca95f339ec264e365",
+              "file": "home.spec.ts",
+              "line": 29,
+              "column": 9
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "stats": {
+    "startTime": "2025-11-12T22:13:45.385Z",
+    "duration": 9949.047,
+    "expected": 5,
+    "skipped": 0,
+    "unexpected": 0,
+    "flaky": 0
+  }
+}

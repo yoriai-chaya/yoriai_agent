@@ -84,6 +84,8 @@ class LocalContext(BaseModel):
     playwright_report_summary_file: str
     test_file: str
     before_mtime: float
+    step_id: str
+    stepid_dir: Path
 
 
 class ESLintInfo(BaseModel):
@@ -108,6 +110,7 @@ class SystemError(BaseModel):
 class StartedPayload(BaseModel):
     status: StartedStatus
     message: str
+    step_id: str
 
 
 class DonePayload(BaseModel):

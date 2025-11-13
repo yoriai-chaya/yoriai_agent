@@ -1,6 +1,7 @@
 import asyncio
 import json
 import re
+from datetime import datetime
 from pathlib import Path
 from typing import Dict
 from uuid import uuid4
@@ -136,8 +137,11 @@ async def stream_service_get(session_id: str):
 
         # Start
         logger.debug("Agents starting ...")
+        now = datetime.now()
+        formatted_time = now.strftime("%Y%m%d-%H%M%S")
+        step_id = f"StepID-{formatted_time}"
         started_payload = StartedPayload(
-            status=StartedStatus.STARTED, message="Started Tasks"
+            status=StartedStatus.STARTED, message="Started Tasks", step_id=step_id
         )
         yield await sse_event(EventType.STARTED, started_payload.model_dump())
 
@@ -197,6 +201,21 @@ async def stream_service_get(session_id: str):
         logger.debug(
             f"playwright_report_summary_file: {playwright_report_summary_file}"
         )
+        archive_dir = settings.archive_dir
+        archive_dir.mkdir(exist_ok=True)
+        abs_archive_dir = resolve_path(archive_dir)
+        stepid_dir = abs_archive_dir / step_id
+        try:
+            stepid_dir.mkdir(exist_ok=False)
+        except Exception as e:
+            logger.error(f"{str(stepid_dir)} mkdir failed: {e}")
+            yield await sse_system_error(
+                error="archive mkdir error",
+                detail=str(e),
+                sse_event=sse_event,
+            )
+            yield await sse_failed_done("archive mkdir error", sse_event=sse_event)
+            return
         context = LocalContext(
             category=category,
             output_dir=output_dir,
@@ -210,6 +229,8 @@ async def stream_service_get(session_id: str):
             playwright_report_summary_file=playwright_report_summary_file,
             test_file="dummy.spec.ts",
             before_mtime=0,
+            step_id=step_id,
+            stepid_dir=stepid_dir,
         )
 
         try:
