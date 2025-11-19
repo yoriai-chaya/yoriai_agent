@@ -39,7 +39,7 @@ def archive(src_dir: Path, src_file: str, stepid_dir: Path, dir: Path):
 
     backup_dir = stepid_dir / dir
     logger.debug(f"backup_dir : {backup_dir}")
-    backup_dir.mkdir(exist_ok=True)
+    backup_dir.mkdir(parents=True, exist_ok=True)
     backup_path = backup_dir / src_file
 
     try:
