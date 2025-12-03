@@ -34,8 +34,32 @@ if (!fs.existsSync(logsDir)) {
   fs.mkdirSync(logsDir, { recursive: true });
 }
 
-const stamp = formatTimestamp(new Date());
-const logPath = path.join(logsDir, `${stamp}_build.json`);
+const customConfigPath = path.join(projectRoot, "build.customconfig.json");
+let logFileName = "build.json"; // default filename
+
+if (fs.existsSync(customConfigPath)) {
+  try {
+    const raw = fs.readFileSync(customConfigPath, "utf8");
+    const customConfig = JSON.parse(raw);
+
+    if (typeof customConfig.build_report_file === "string") {
+      logFileName = customConfig.build_report_file;
+      console.log(`Using custom log file: ${logFileName}`);
+    } else {
+      console.log(
+        "Warning: 'build_report_file' is missing or not a string in build.customconfig.json"
+      );
+    }
+  } catch (err) {
+    console.log(
+      `Warnig: Failed to read or parse build.customconfig.json: ${err.message}`
+    );
+  }
+} else {
+  console.log("No build.customconfig.json found. Using default build.json");
+}
+
+const logPath = path.join(logsDir, logFileName);
 
 const records = [];
 const summary = { errorCount: 0, warnCount: 0, infoCount: 0 };

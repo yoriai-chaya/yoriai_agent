@@ -19,10 +19,12 @@ def run_cmd(
 
     # Run command
     logger.debug(f"output_path: {output_path}")
+    logger.debug(f"Run! : command={command}, cwd={cwd}")
     with output_path.open("w", encoding="utf-8") as f:
         result = subprocess.run(
             command, cwd=cwd, stdout=f, stderr=subprocess.PIPE, text=True
         )
+    logger.debug("Run finished")
 
     # Archive
     filename = output_path.name

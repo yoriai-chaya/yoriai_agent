@@ -28,6 +28,7 @@ async def handle_gen_code(
     )
 
     # Code Gen Loop
+    debug_mode = DebugMode.CONTINUE
     for i in range(settings.code_gen_retry):
         logger.debug(f"Code Gen Loop [{i}]")
 
