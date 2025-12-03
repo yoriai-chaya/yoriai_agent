@@ -37,6 +37,13 @@ class PromptHeaderKey(StrEnum):
     CATEGORY = "Category"
 
 
+class DebugMode(StrEnum):
+    CONTINUE = "c"
+    SKIP_AGENT = "s"
+    BYPASS = "b"
+    END = "e"
+
+
 # Model Definitions
 class PromptRequest(BaseModel):
     prompt: str
@@ -169,4 +176,5 @@ class RunTestsResultPayload(BaseModel):
 
 class FunctionResult(BaseModel):
     result: bool
+    abort_flg: bool = False
     detail: str | None = None

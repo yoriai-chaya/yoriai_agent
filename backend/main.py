@@ -11,6 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, StreamingResponse
 
 from base import (
+    DebugMode,
     DonePayload,
     DoneStatus,
     EventType,
@@ -107,12 +108,15 @@ async def create_session(request: PromptRequest):
 
 
 # for Debug
-async def wait_for_console_input() -> bool:
+async def wait_for_console_input() -> DebugMode:
     loop = asyncio.get_event_loop()
-    user_input = await loop.run_in_executor(
-        None, input, 'Press Enter "y" to continue: '
-    )
-    return user_input.strip().lower() == "y"
+    prompt = 'Enter cmd - "e":end, "s":skip agent, "c": continue, "b": bypass: '
+    user_input = await loop.run_in_executor(None, input, prompt)
+    cmd = user_input.strip().lower()
+    for mode in DebugMode:
+        if cmd == mode.value:
+            return mode
+    return DebugMode.END
 
 
 # Main Service

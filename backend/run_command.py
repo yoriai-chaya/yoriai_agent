@@ -2,14 +2,12 @@ import subprocess
 from pathlib import Path
 from subprocess import CompletedProcess
 
-from agents import RunContextWrapper
-
 from common import archive
 from logger import logger
 
 
 def run_cmd(
-    ctx: RunContextWrapper, command: list[str], output_path: Path, cwd: str
+    stepid_dir: Path, command: list[str], output_path: Path, cwd: str
 ) -> CompletedProcess:
     logger.debug("run_cmd called")
 
@@ -32,7 +30,7 @@ def run_cmd(
     archive(
         src_dir=output_dir,
         src_file=filename,
-        stepid_dir=ctx.context.stepid_dir,
+        stepid_dir=stepid_dir,
         dir=Path("eslint"),
     )
 

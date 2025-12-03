@@ -21,6 +21,7 @@ class Settings(BaseSettings):
     log_filename: str = "yoriai.log"
     log_level: str = "AGENT"
     archive_dir: Path = Path("archive")
+    build_customconfig_file: str = "build.customconfig.json"
 
     model_config = SettingsConfigDict(
         env_file=os.path.join(os.path.dirname(__file__), ".env")
