@@ -38,6 +38,11 @@ function isTestResultEvent(
 ): event is Extract<StreamResponse, { event: typeof EventTypes.TEST_RESULT }> {
   return event.event === EventTypes.TEST_RESULT;
 }
+function isDoneEvent(
+  event: StreamResponse
+): event is Extract<StreamResponse, { event: typeof EventTypes.DONE }> {
+  return event.event === EventTypes.DONE;
+}
 function isSystemErrorEvent(
   event: StreamResponse
 ): event is Extract<StreamResponse, { event: typeof EventTypes.SYSTEM_ERROR }> {
@@ -70,7 +75,9 @@ const StreamDetail = ({ status, responseInfo }: StreamDetailProps) => {
               const filePath = sr.payload.file_path;
               return (
                 <div key={`code-${idx}`}>
-                  <div className="text-app-detail pl-2">Filepath: {filePath}</div>
+                  <div className="text-app-detail pl-2">
+                    Filepath: {filePath}
+                  </div>
                   <Card className="my-2 p-1 bg-gray-200 rounded-sm shadow-md">
                     <div className="flex overflow-x-auto">
                       <Markdown markdown={code} />
@@ -95,8 +102,12 @@ const StreamDetail = ({ status, responseInfo }: StreamDetailProps) => {
                     ) : (
                       <>
                         <span className="text-red-500">{result_str}</span>
-                        <div className="text-app-detail pl-4">rule: {rule_id}</div>
-                        <div className="text-app-detail pl-4">detail: {detail}</div>
+                        <div className="text-app-detail pl-4">
+                          rule: {rule_id}
+                        </div>
+                        <div className="text-app-detail pl-4">
+                          detail: {detail}
+                        </div>
                       </>
                     )}
                   </span>
@@ -195,6 +206,21 @@ const StreamDetail = ({ status, responseInfo }: StreamDetailProps) => {
                       )}
                     </div>
                   </span>
+                </div>
+              );
+            }
+
+            // ----- done event -----
+            if (isDoneEvent(sr)) {
+              const status = sr.payload.status;
+              const message = sr.payload.message;
+              return (
+                <div key={`done-${idx}`}>
+                  <div className="text-app-detail">Done</div>
+                  <div className="text-app-detail pl-2">
+                    <div>status: {status}</div>
+                    <div>message: {message}</div>
+                  </div>
                 </div>
               );
             }

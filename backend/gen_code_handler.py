@@ -1,3 +1,14 @@
+"""
+A handler for code generation, ESLint checking, and build checking
+
+Notes:
+(1)error_payload
+    In the following statement:
+    error_payload = SystemError(error="Unexpected error", detail=str(e))
+    The error value (e.g., "Unexpected error") is displayed in the frontend UI (Left-Panel)
+    Keep this error message within 20 characters.
+"""
+
 import json
 
 from agents.exceptions import AgentsException, ModelBehaviorError
@@ -20,159 +31,229 @@ from run_build_cmd import run_build
 async def handle_gen_code(
     prompt: str, context, settings, sse_event, wait_for_console_input
 ):
-    category = context.category
-    logger.info(f"[{category}]: Start Code Generation")
-    # Make Payload (for Completed)
-    final_payload = DonePayload(
-        status=DoneStatus.COMPLETED, message="All Tasks Completed"
-    )
+    """
+    Overview:
+        A handler that performs code generation, ESLint checks, and build verification.
 
-    # Code Gen Loop
-    debug_mode = DebugMode.CONTINUE
-    for i in range(settings.code_gen_retry):
-        logger.debug(f"Code Gen Loop [{i}]")
+    Description:
+        This handler executes the following steps:
 
-        try:
-            # Create Code
+        1. Generate code based on a given prompt.
+           If necessary, additional text may be appended to the prompt
+           (e.g., when ESLint errors occur, supplementary instructions are added
+           to help avoid those errors).
+
+        2. Perform static analysis on the generated code using ESLint.
+
+        3. If the static check passes, run the build command to detect errors
+           that ESLint cannot catch
+           (e.g., when using useState, a build error occurs if "use client"
+           is missing).
+
+        4. If an error occurs in steps (2) or (3), retry the code generation
+           process up to the maximum number of retry attempts.
+    """
+    try:
+        category = context.category
+        logger.info(f"[{category}]: Start Code Generation")
+        # Make Payload (for Completed)
+        final_payload = DonePayload(
+            status=DoneStatus.COMPLETED, message="All Tasks Completed"
+        )
+
+        # Code Gen Loop
+        debug_mode = DebugMode.CONTINUE
+        for i in range(settings.code_gen_retry):
+            logger.debug(f"Code Gen Loop [{i}]")
+
+            # -------------------------------
+            # 1. Create Code (prepare prompt)
+            # -------------------------------
             final_prompt = prompt
             add_prompts_len = len(context.add_prompts)
-            logger.debug(f"add_prompts_len: {add_prompts_len}")
+            logger.debug(
+                f"[Prompt] Base prompt len={len(prompt)}, number of additional prompts={add_prompts_len}"
+            )
             if not add_prompts_len == 0:
-                # extend prompt
+                logger.debug("[Prompt] Extending prompt with additional messages")
                 for add_prompt in context.add_prompts:
-                    logger.debug(f"add_prompt : {add_prompt}")
+                    logger.debug(f"[Prompt] Additional prompt: {add_prompt}")
                     prefix = "- "
                     final_prompt = f"{final_prompt}\n{prefix}{add_prompt}\n"
                     logger.debug(f"final_prompt: {final_prompt}")
 
-            # Wait for console input (for debug)
+            # --------------------------------------------
+            # 2. CP1: Debug Checkpoint - before gen_code()
+            # --------------------------------------------
+            logger.debug(f"[CP1] Current debug_mode: {debug_mode}")
             if settings.debug:
-                logger.debug("[debug] wait (before gen_code)")
+                logger.debug("[CP1] Waiting for input from the console")
                 debug_mode = await wait_for_console_input()
+                logger.debug(f"[CP1] Entered debug_mode: {debug_mode}")
                 if debug_mode == DebugMode.END:
-                    logger.debug("[debug] end")
+                    logger.debug("[CP1] Exiting loop")
                     break
-                logger.debug("[debug] continue or skip_agent")
+                logger.debug("[CP1] Continuing to gen_code()")
 
-            if not debug_mode == DebugMode.SKIP_AGENT:
-                async for line in gen_code(
-                    request=PromptRequest(prompt=final_prompt), context=context
-                ):
-                    try:
-                        data = json.loads(line)
-                        yield await sse_event(data["event"], data.get("payload", {}))
-                    except Exception as e:
-                        logger.debug(f"Invalid JSON from gen_code: {e}")
-
-        except ModelBehaviorError as e:
-            logger.warning(f"ModelBehaviorError detected: {e}")
-            error_payload = SystemError(error="ModelBehaviorError", detail=str(e))
-            yield await sse_event(EventType.SYSTEM_ERROR, error_payload.model_dump())
-            if i == settings.code_gen_retry - 1:
-                final_payload = DonePayload(
-                    status=DoneStatus.FAILED, message="Retry Limit exceeded"
-                )
-            else:
-                continue
-        except AgentsException as e:
-            logger.error(f"AgentsException detected: {e}")
-            error_payload = SystemError(error="AgentsException", detail=str(e))
-            yield await sse_event(EventType.SYSTEM_ERROR, error_payload.model_dump())
-            final_payload = DonePayload(
-                status=DoneStatus.FAILED, message="Internal error occurred"
-            )
-            break
-        except Exception as e:
-            logger.error(f"Unexpected error: {e}")
-            error_payload = SystemError(error="Unexpected error", detail=str(e))
-            yield await sse_event(EventType.SYSTEM_ERROR, error_payload.model_dump())
-            final_payload = DonePayload(
-                status=DoneStatus.FAILED, message="Internal error occurred"
-            )
-            break
-
-        # Wait for console input (for debug)
-        if settings.debug:
-            logger.debug("[debug] wait (before check_gen_code)")
-            debug_mode = await wait_for_console_input()
-            if debug_mode == DebugMode.END:
-                logger.debug("[debug] end")
-                break
-            logger.debug("[debug] continue or skip_agent")
-
-        # Check Code
-        if not debug_mode == DebugMode.SKIP_AGENT:
+            # ------------------
+            # 3. Call gen_code()
+            # ------------------
             try:
+                if not debug_mode == DebugMode.SKIP_AGENT:
+                    logger.debug("[gen_code] Call gen_code()")
+                    async for line in gen_code(
+                        request=PromptRequest(prompt=final_prompt), context=context
+                    ):
+                        try:
+                            data = json.loads(line)
+                            logger.debug(f"[gen_code] Received data: {data}")
+                            yield await sse_event(
+                                data["event"], data.get("payload", {})
+                            )
+                        except Exception as e:
+                            logger.debug(f"[gen_code] Invalid JSON from gen_code: {e}")
+                else:
+                    logger.debug("[gen_code] Skipping gen_code()")
+
+            except ModelBehaviorError as e:
+                logger.warning(f"[gen_code] ModelBehaviorError detected: {e}")
+                error_payload = SystemError(error="ModelBehaviorError", detail=str(e))
+                yield await sse_event(
+                    EventType.SYSTEM_ERROR, error_payload.model_dump()
+                )
+                if i == settings.code_gen_retry - 1:
+                    final_payload = DonePayload(
+                        status=DoneStatus.FAILED, message="Retry Limit exceeded"
+                    )
+                    logger.debug(
+                        "[gen_code] Exiting loop due to ModelBehaviorError and reaching retry limit"
+                    )
+                    break
+                else:
+                    logger.debug(f"[gen_code] Retrying due to ModelBehaviorError i={i}")
+                    continue
+            except AgentsException as e:
+                logger.error(f"[gen_code] AgentsException detected: {e}")
+                error_payload = SystemError(error="AgentsException", detail=str(e))
+                yield await sse_event(
+                    EventType.SYSTEM_ERROR, error_payload.model_dump()
+                )
+                final_payload = DonePayload(
+                    status=DoneStatus.FAILED, message="Internal error occurred"
+                )
+                break
+
+            # --------------------------------------------------
+            # 4. CP2: Debug Checkpoint - before check_gen_code()
+            # --------------------------------------------------
+            logger.debug(f"[CP2] Current debug_mode: {debug_mode}")
+            if settings.debug:
+                logger.debug("[CP2] Waiting for input from the console")
+                debug_mode = await wait_for_console_input()
+                logger.debug(f"[CP2] Entered debug_mode: {debug_mode}")
+                if debug_mode == DebugMode.END:
+                    logger.debug("[CP2] Exiting loop")
+                    break
+                logger.debug("[CP2] Continuing to check_gen_code()")
+
+            # ------------------------
+            # 5. Call check_gen_code()
+            # ------------------------
+            if not debug_mode == DebugMode.SKIP_AGENT:
+                logger.debug("[check_gen_code] Call check_gen_code()")
                 async for line in check_gen_code(
                     request=PromptRequest(prompt=prompt), context=context
                 ):
                     try:
                         data = json.loads(line)
+                        logger.debug(f"[check_gen_code] Received data: {data}")
                         yield await sse_event(data["event"], data.get("payload", {}))
                     except Exception as e:
-                        logger.debug(f"Invalid JSON from check_gen_code: {e}")
+                        logger.debug(
+                            f"[check_gen_code] Invalid JSON from check_gen_code: {e}"
+                        )
+            else:
+                logger.debug("[check_gen_code] Skipping check_gen_code()")
 
-            except Exception as e:
-                logger.error(f"Unexpected error: {e}")
-                error_payload = SystemError(error="Unexpected error", detail=str(e))
-                yield await sse_event(
-                    EventType.SYSTEM_ERROR, error_payload.model_dump()
-                )
-                final_payload = DonePayload(
-                    status=DoneStatus.FAILED, message="check_gen_code error occurred"
-                )
-                break
+            # ---------------------------------------------
+            # 6. CP3: Debug Checkpoint - before run_build()
+            # ---------------------------------------------
+            logger.debug(f"[CP3] Current debug_mode: {debug_mode}")
+            if settings.debug:
+                logger.debug("[CP3] Waiting for input from the console")
+                debug_mode = await wait_for_console_input()
+                logger.debug(f"[CP3] Entered debug_mode: {debug_mode}")
+                if debug_mode == DebugMode.END:
+                    logger.debug("[CP3] Exiting loop")
+                    break
+                logger.debug("[CP3] Continuing to run_build()")
 
-        # Wait for console input (for debug)
-        if settings.debug:
-            logger.debug("[debug] wait (before is_retry_gen_code)")
-            debug_mode = await wait_for_console_input()
-            if debug_mode == DebugMode.END:
-                logger.debug("[debug] end")
-                break
-            logger.debug("[debug] continue or skip_agent or bypass")
+            # ------------------------------
+            # 7. Loop judge (Retry decision)
+            # ------------------------------
+            logger.debug(f"[Loop] Current debug_mode: {debug_mode}")
+            logger.debug(
+                f"[Loop] context.is_retry_gen_code: {context.is_retry_gen_code}"
+            )
+            if context.is_retry_gen_code:
+                if not debug_mode == DebugMode.BYPASS:
+                    logger.debug("[Loop] Retry code generation")
+                    continue
 
-        # Loop Judge
-        logger.debug(f"debug_mode: {debug_mode}")
-        if context.is_retry_gen_code:
-            if not debug_mode == DebugMode.BYPASS:
-                continue
-
-        # Build
-        build_result = await run_build(context, settings)
-        logger.debug(f"build_result: {build_result}")
-        if not build_result.result:
-            if build_result.abort_flg:
-                logger.error(f"Build failed: {build_result.detail}")
-                final_payload = DonePayload(
-                    status=DoneStatus.FAILED, message="Build failed"
-                )
-                break
+            # -------------------
+            # 8. Call run_build()
+            # -------------------
+            logger.debug("[run_build] Call run_build()")
+            build_result = await run_build(context, settings)
+            logger.debug(f"[run_build] build_result: {build_result}")
+            if not build_result.result:
+                if build_result.abort_flg:
+                    logger.error(f"[run_build] Build failed: {build_result.detail}")
+                    final_payload = DonePayload(
+                        status=DoneStatus.FAILED, message="Build failed"
+                    )
+                    break
+                else:
+                    build_check_payload = {
+                        "checker": "Build",
+                        "result": False,
+                        "rule_id": "npm run build",
+                        "detail": build_result.detail,
+                    }
+                    yield await sse_event(EventType.CHECK_RESULT, build_check_payload)
+                    logger.debug("[run_build] call create_prompt_for_builderror()")
+                    re_prompt = create_prompt_for_builderror()
+                    logger.debug(f"[run_build] re_prompt: {re_prompt}")
             else:
                 build_check_payload = {
                     "checker": "Build",
-                    "result": False,
+                    "result": True,
                     "rule_id": "",
                     "detail": "",
                 }
+                logger.debug("[run_build] Build succeeded")
                 yield await sse_event(EventType.CHECK_RESULT, build_check_payload)
-                re_prompt = create_prompt_for_builderror()
-                logger.debug(f"re_prompt: {re_prompt}")
-        else:
-            build_check_payload = {
-                "checker": "Build",
-                "result": True,
-                "rule_id": "",
-                "detail": "",
-            }
-            yield await sse_event(EventType.CHECK_RESULT, build_check_payload)
-            break
+                break
 
-        # Retry Limit Check
-        if i == settings.code_gen_retry - 1:
-            final_payload = DonePayload(
-                status=DoneStatus.FAILED, message="Retry Limit exceeded"
+            # --------------------
+            # 9. Retry limit check
+            # --------------------
+            logger.debug(
+                f"[retry limit check] i={i} settings.code_gen_retry={settings.code_gen_retry}"
             )
+            if i == settings.code_gen_retry - 1:
+                logger.error("[retry limit check] Retry limit exceeded")
+                final_payload = DonePayload(
+                    status=DoneStatus.FAILED, message="Retry Limit exceeded"
+                )
+
+    except Exception as e:
+        logger.error(f"Unexpected error: {e}")
+        error_payload = SystemError(error="Unexpected error", detail=str(e))
+        yield await sse_event(EventType.SYSTEM_ERROR, error_payload.model_dump())
+        final_payload = DonePayload(
+            status=DoneStatus.FAILED, message="unexpected error occurred"
+        )
 
     # Done
     logger.info(f"[{category}]: All Tasks Completed")

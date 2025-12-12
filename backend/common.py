@@ -1,4 +1,5 @@
 import shutil
+from datetime import datetime
 from pathlib import Path
 
 from logger import logger
@@ -41,10 +42,29 @@ def archive(src_dir: Path, src_file: str, stepid_dir: Path, dir: Path):
     logger.debug(f"backup_dir : {backup_dir}")
     backup_dir.mkdir(parents=True, exist_ok=True)
     backup_path = backup_dir / src_file
+    logger.debug(f"backup_path : {backup_path}")
 
+    if backup_path.exists():
+        try:
+            mtime = backup_path.stat().st_mtime
+            dt = datetime.fromtimestamp(mtime)
+            timestamp = dt.strftime("%Y%m%d_%H%M%S")
+
+            stem = backup_path.stem
+            suffix = backup_path.suffix
+            archived_name = f"{stem}_{timestamp}{suffix}"
+            archived_path = backup_dir / archived_name
+
+            # Rename
+            backup_path.rename(archived_path)
+            logger.debug(f"Archived old backup: {backup_path} -> {archived_path}")
+
+        except Exception as e:
+            logger.error(f"Failed to archive existing file: {backup_path}, {e}")
+            raise e
     try:
         shutil.copy2(str(src_path), str(backup_path))
-        logger.debug(f"backup: {src_path.name} -> {backup_path.name}")
+        logger.debug(f"backup: {src_path} -> {backup_path}")
     except Exception as e:
         logger.error(f"Failed to backup file: {backup_path}, {e}")
         raise e
