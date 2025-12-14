@@ -39,3 +39,22 @@ def extract_from_prompt(prompt: str, key: str) -> Optional[str]:
     header_text = extract_header_section(prompt)
     fields = parse_header_fields(header_text)
     return fields.get(key)
+
+
+def parse_build_check(value: Optional[str]) -> Optional[bool]:
+    """
+    Convert BuildCheck header value to bool.
+    Returns:
+        True  : "on"
+        False : "off"
+        None  : invalid or not specified
+    """
+    if value is None:
+        return None
+
+    v = value.strip().lower()
+    if v == "on":
+        return True
+    if v == "off":
+        return False
+    return None

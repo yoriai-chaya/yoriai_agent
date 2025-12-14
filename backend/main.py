@@ -29,7 +29,7 @@ from config import get_settings
 from gen_code_handler import handle_gen_code
 from logger import logger
 from place_files_handler import handle_place_files
-from prompt_parser import extract_from_prompt
+from prompt_parser import extract_from_prompt, parse_build_check
 from run_tests_handler import handler_run_tests
 
 
@@ -128,6 +128,11 @@ async def stream_service_get(session_id: str):
 
     prompt = sessions.pop(session_id)
     category = extract_from_prompt(prompt, PromptHeaderKey.CATEGORY)
+    logger.debug(f"category: {category}")
+    build_check_value = extract_from_prompt(prompt, PromptHeaderKey.BUILD_CHECK)
+    logger.debug(f"build_check_value: {build_check_value}")
+    build_check = parse_build_check(build_check_value)
+    logger.debug(f"build_check: {build_check}")
 
     async def generator(prompt: str):
         # Heartbeat
@@ -156,6 +161,17 @@ async def stream_service_get(session_id: str):
             )
             yield await sse_failed_done("Invalid prompt", sse_event=sse_event)
             return
+
+        if category == PromptCategory.GEN_CODE:
+            if build_check is None:
+                logger.error("Invalid or not specified BuildCheck value")
+                yield await sse_system_error(
+                    error="InvalidPrompt",
+                    detail="Invalid or not specified BuildCheck value (expected: - BuildCheck: On/Off)",
+                    sse_event=sse_event,
+                )
+                yield await sse_failed_done("Invalid prompt", sse_event=sse_event)
+                return
 
         try:
             output_dir = resolve_path(settings.output_dir)
@@ -225,7 +241,7 @@ async def stream_service_get(session_id: str):
             output_dir=output_dir,
             max_turns=settings.openai_max_turns,
             gen_code_filepath="",
-            is_retry_gen_code=True,
+            is_retry_gen_code=False,
             add_prompts=[],
             results_dir=results,
             playwright_info_file=playwright_info_file,
@@ -235,7 +251,9 @@ async def stream_service_get(session_id: str):
             before_mtime=0,
             step_id=step_id,
             stepid_dir=stepid_dir,
+            build_check=build_check,
         )
+        logger.debug(f"context: {context}")
 
         try:
             resolved_prompt = _resolve_placeholders(prompt=prompt, context=context)

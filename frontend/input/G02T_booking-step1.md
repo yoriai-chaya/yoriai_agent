@@ -1,5 +1,6 @@
 # Header
-Category: GenCode
+- Category: GenCode
+- BuildCheck: Off
 
 # Body
 Playwright用のフロントエンドアプリケーションのテストプログラムを作成します。

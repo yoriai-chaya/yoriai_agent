@@ -1,5 +1,6 @@
 # Header
 - Category: GenCode
+- BuildCheck: Off
 
 # Body
 Next.js, TailwindCSS, shadcn/ui を用いてフロントエンドの
@@ -61,7 +62,7 @@ Next.js, TailwindCSS, shadcn/ui を用いてフロントエンドの
 (b)コンテナのクラスとして以下を指定する
   - 幅の指定：最大幅  max-w-2xl (672px)
   - 中央寄せ：mx-auto
-  - テストID：home-container
+  - data-testid：home-container
 
 ### (3)各要素の概要
 
@@ -97,7 +98,7 @@ Next.js, TailwindCSS, shadcn/ui を用いてフロントエンドの
 
 - 文字サイズ: スモール(text-sm)
 - パティング: px-8
-- テストID：home-description
+- data-testid：home-description
 
 ## 4. 指示事項
 
@@ -119,6 +120,6 @@ filename: page.tsx
 - 生成するコード形式はいわゆる"rafce"形式(=ReactArrowFunctionExportComponent)で生成すること
 - プレースホルダー文字列は<div>タグでのみ囲み、その他の要素は使用しないこと
 - プログラム生成時のインデント幅=2とする
-- 各要素にはテスト自動化のためのテストID「data-testid」を付与し、「各要素の詳細」で指定したdata-testidの値を付与すること
+- 各要素にはテスト自動化のための「data-testid」を付与し、「各要素の詳細」で指定したdata-testidの値を付与すること
 - 画像ファイルの取り込み方法は、「CommonJS」形式ではなく「ECMAscript」形式とする。すなわち、requre()は使わず、import文を使用すること。
 

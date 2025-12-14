@@ -1,5 +1,6 @@
 # Header
 - Category: GenCode
+- BuildCheck: Off
 
 # Body
 Next.js, TailwindCSS, shadcn/ui を用いてフロントエンドの
@@ -83,7 +84,7 @@ Next.js, TailwindCSS, shadcn/ui を用いてフロントエンドの
 - コンテナ(div): フレックス、垂直方向で中央寄せ
 - このコンテナの中に既存の<Sheet>コンポーネントをそのまま配置
 - <Sheet>コンポーネント内部の<SheetTitle>ホテル東京はそのまま残すこと
-- ただし、内部要素のリンクボタンにそれぞれ下記のテストIDを付与する
+- ただし、内部要素のリンクボタンにそれぞれ下記のdata-testidを付与する
   - "/rooms"リンク: mobile-navbar-link-rooms
   - "/dining"リンク: mobile-navbar-link-dining
 
@@ -95,7 +96,7 @@ Next.js, TailwindCSS, shadcn/ui を用いてフロントエンドの
 - ここに文字列を配置
   - 表示文字列のサイズ: text-lg
   - 表示文字列: ホテル東京
-  - テストID: mobile-navbar-title
+  - data-testid: mobile-navbar-title
 
 #### Ｃ列
 - コンテナ(div):

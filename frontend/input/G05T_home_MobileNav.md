@@ -1,5 +1,6 @@
 # Header
-Category: GenCode
+- Category: GenCode
+- BuildCheck: Off
 
 # Body
 Playwright用のフロントエンドアプリケーションのテストプログラムを作成します。
@@ -109,6 +110,8 @@ $ npx playwright test (テストプログラムファイル名)
 
 （例）
   await expect(locator).toHaveText(/xxx/);
+
+- テストの期待値の表現など、日本語の文字列を生成する場合は、Unicodeエスケープ文字が含まれていないことを確認すること。
 
 ## テスト個別事項
 - 特になし

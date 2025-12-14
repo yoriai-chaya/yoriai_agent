@@ -1,5 +1,6 @@
 # Header
 - Category: GenCode
+- BuildCheck: Off
 
 # Body
 Next.js, TailwindCSS, shadcn/ui を用いてフロントエンドの
@@ -63,7 +64,7 @@ Next.js, TailwindCSS, shadcn/ui を用いてフロントエンドの
 ### (2)追加する実装機能一覧
 1. Home画面に限りナビゲーションバー上の「宿泊予約」ボタンを表示するように修正する。
 2. 「宿泊予約」ボタン押下時に画面遷移するロジックを追加する。
-3. テストIDの追加
+3. data-testidの追加
 
 ### (3)Reactフックの追加
 上記(1)(2)を実装するために、「useRouter」「userPathname」の２つをReactフックとして追加する。
@@ -77,16 +78,16 @@ import { useRouter, usePathname } from "next/navigation"
 - useRouter()で得られるルータを用いて、コールバック関数handleSearch()の中で以下に指定するパスに遷移するロジックを追加する。
   - 遷移先のパス: /booking/step-1
 
-### (6)テストIDの追加
-- (a)以下の２つのリンク要素にそれぞれ下記のテストIDを付与する
+### (6)data-testidの追加
+- (a)以下の２つのリンク要素にそれぞれ下記のdata-testidを付与する
   - "/rooms"リンク: main-navbar-link-rooms
   - "/dining"リンク: main-navbar-link-dining
 
-- (b)「ホテル東京」の文字列表示要素に下記のテストIDを付与する
-  - テストID: main-navbar-title
+- (b)「ホテル東京」の文字列表示要素に下記のdata-testidを付与する
+  - data-testid: main-navbar-title
 
-- (c)「宿泊予約」ボタンに対してテストIDを付与する
-  - テストID: main-navbar-button-booking
+- (c)「宿泊予約」ボタンに対してdata-testidを付与する
+  - data-testid: main-navbar-button-booking
 
 ## 4. 指示事項
 

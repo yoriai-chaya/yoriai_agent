@@ -1,5 +1,6 @@
 # Header
 - Category: GenCode
+- BuildCheck: On
 
 # Body
 Next.js, TailwindCSS, shadcn/ui を用いてフロントエンドのプログラムを作成します。

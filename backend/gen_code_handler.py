@@ -10,6 +10,7 @@ Notes:
 """
 
 import json
+from typing import AsyncIterator, Awaitable, Callable
 
 from agents.exceptions import AgentsException, ModelBehaviorError
 
@@ -18,19 +19,28 @@ from base import (
     DonePayload,
     DoneStatus,
     EventType,
+    LocalContext,
     PromptRequest,
     SystemError,
 )
 from check_code import check_gen_code
+from config import Settings
 from create_code import gen_code
 from create_prompt import create_prompt_for_builderror
 from logger import logger
 from run_build_cmd import run_build
 
+SSEEventCallable = Callable[[str, dict], Awaitable[str]]
+WaitForConsoleInputCallable = Callable[[], Awaitable[DebugMode]]
+
 
 async def handle_gen_code(
-    prompt: str, context, settings, sse_event, wait_for_console_input
-):
+    prompt: str,
+    context: LocalContext,
+    settings: Settings,
+    sse_event: SSEEventCallable,
+    wait_for_console_input: WaitForConsoleInputCallable,
+) -> AsyncIterator[str]:
     """
     Overview:
         A handler that performs code generation, ESLint checks, and build verification.
@@ -203,37 +213,41 @@ async def handle_gen_code(
             # -------------------
             # 8. Call run_build()
             # -------------------
-            logger.debug("[run_build] Call run_build()")
-            build_result = await run_build(context, settings)
-            logger.debug(f"[run_build] build_result: {build_result}")
-            if not build_result.result:
-                if build_result.abort_flg:
-                    logger.error(f"[run_build] Build failed: {build_result.detail}")
-                    final_payload = DonePayload(
-                        status=DoneStatus.FAILED, message="Build failed"
-                    )
-                    break
+            logger.debug(f"[run_build] context.build_check: {context.build_check}")
+            if context.build_check:
+                logger.debug("[run_build] Call run_build()")
+                build_result = await run_build(context, settings)
+                logger.debug(f"[run_build] build_result: {build_result}")
+                if not build_result.result:
+                    if build_result.abort_flg:
+                        logger.error(f"[run_build] Build failed: {build_result.detail}")
+                        final_payload = DonePayload(
+                            status=DoneStatus.FAILED, message="Build failed"
+                        )
+                        break
+                    else:
+                        build_check_payload = {
+                            "checker": "Build",
+                            "result": False,
+                            "rule_id": "npm run build",
+                            "detail": build_result.detail,
+                        }
+                        yield await sse_event(
+                            EventType.CHECK_RESULT, build_check_payload
+                        )
+                        logger.debug("[run_build] call create_prompt_for_builderror()")
+                        re_prompt = create_prompt_for_builderror()
+                        logger.debug(f"[run_build] re_prompt: {re_prompt}")
                 else:
                     build_check_payload = {
                         "checker": "Build",
-                        "result": False,
-                        "rule_id": "npm run build",
-                        "detail": build_result.detail,
+                        "result": True,
+                        "rule_id": "",
+                        "detail": "",
                     }
+                    logger.debug("[run_build] Build succeeded")
                     yield await sse_event(EventType.CHECK_RESULT, build_check_payload)
-                    logger.debug("[run_build] call create_prompt_for_builderror()")
-                    re_prompt = create_prompt_for_builderror()
-                    logger.debug(f"[run_build] re_prompt: {re_prompt}")
-            else:
-                build_check_payload = {
-                    "checker": "Build",
-                    "result": True,
-                    "rule_id": "",
-                    "detail": "",
-                }
-                logger.debug("[run_build] Build succeeded")
-                yield await sse_event(EventType.CHECK_RESULT, build_check_payload)
-                break
+                    break
 
             # --------------------
             # 9. Retry limit check

@@ -1,5 +1,6 @@
 # Header
 - Category: GenCode
+- BuildCheck: On
 
 # Body
 Next.js, TailwindCSS, shadcn/ui を用いてフロントエンドの
@@ -60,13 +61,16 @@ Next.js, TailwindCSS, shadcn/ui を用いてフロントエンドの
 
 ### (2)useState Hook
 - useStateをimportする
-- 以下の２つの状態変数をセットする
+- 以下の３つの状態変数をセットする
 - (1)checkInDate
     - 型: Date | undefined
     - 初期値: undefined
 - (2)checkOutDate
     - 型: Date | undefined
     - 初期値: undefined
+- (3)guests
+    - 型: number
+    - 初期値: 2
 
 ### (3)今回使用する部品のインポート
 クライアントコンポーネントとして生成し、以下のimport文を挿入すること。
@@ -131,7 +135,7 @@ import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from '@
     - name="check-out"
 
 #### 要素04: 人数入力コンポーネント
-- コンテナ: フレックスボックスで列方向、中央寄せ
+- コンテナ: フレックスボックス、中央寄せ
 - このコンテナに下記の２つのコンポーネントを横並びで配置する
 - (1)タイトル
     - <span>タグとする
@@ -139,6 +143,8 @@ import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from '@
     - マージン: mx-5
     - テキストの折返しをしない(text-nowrap)
 - (2)Select
+    - 値(value): 状態変数guestsを文字列型に変換して設定
+    - 選択肢が変わったときに呼ばれるイベント(onValueChange): guestsのsetter関数でユーザが選択した値(v)を受け取って、それを数値に変換する関数を設定
     - 以下の<SelectTrigger>, <SelectValue>, <SelectContent>の３つのサブコンポーネントを配置する。それぞれのサブコンポーネントのクラス設定やプロパティ設定は以下の通りである。
     - (a)SelectTrigger
         - Ring Width: ring-0, focus-visible:ring-0
@@ -146,11 +152,11 @@ import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from '@
         - Box-shadow: shadow-none
         - data-testid: guest-select-trigger
     - (b)SelectValue
-        - placeholder: "2人"
+        - placeholder: "人数を選択"
     - (c)SelectContent
         - ４つの項目<SelectItem>を配置する。詳細は下記の通り。
         - 項目名: 1人, 2人, 3人, 4人
-        - value: 1, 2, 3, 4
+        - value: "1", "2", "3", "4" （文字列型とする）
         - data-testid: guest-option-x (x: 1, 2, 3, 4)
 
 #### 要素05: 「空室検索」ボタンコンポーネント

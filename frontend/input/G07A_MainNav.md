@@ -1,5 +1,6 @@
 # Header
 - Category: GenCode
+- BuildCheck: Off
 
 # Body
 Next.js, TailwindCSS, shadcn/ui を用いてフロントエンドの
@@ -68,7 +69,7 @@ import { SendHorizontal } from "lucide-react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 
-### (3)条件
+### (3)レイアウト条件
 以下の順番で階層化させる。
 
 #### 最上位コンテナ(div)
@@ -104,9 +105,13 @@ import { Button } from "@/components/ui/button"
 - ここにボタン(Button)を配置
   - 背景色: bg-ctm-blue-500
   - ホバー時背景色: bg-ctm-blue-600
+  - ボタン押下時のコールバック関数名: handleSearch
   - 表示アイコン: <SendHorizontal>
     - 表示アイコンのクラス指定: "w-5 h-5 mr-2"
   - 表示文字列: 宿泊予約
+
+### (4)コールバック関数仕様
+- コールバック関数(handleSearch)を実装する。現時点ではボタンが押下されたことを示すconsole.log()文だけでよい。
 
 ## 4. 指示事項
 

@@ -35,6 +35,7 @@ class PromptCategory(StrEnum):
 
 class PromptHeaderKey(StrEnum):
     CATEGORY = "Category"
+    BUILD_CHECK = "BuildCheck"
 
 
 class DebugMode(StrEnum):
@@ -93,6 +94,7 @@ class LocalContext(BaseModel):
     before_mtime: float
     step_id: str
     stepid_dir: Path
+    build_check: bool | None = None
 
 
 class ESLintInfo(BaseModel):
