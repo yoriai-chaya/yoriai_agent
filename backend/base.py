@@ -41,8 +41,13 @@ class PromptHeaderKey(StrEnum):
 class DebugMode(StrEnum):
     CONTINUE = "c"
     SKIP_AGENT = "s"
-    BYPASS = "b"
     END = "e"
+
+
+class IsCodeCheckError(StrEnum):
+    NO_ERROR = "NoError"
+    ESLINT_ERROR = "ESLintError"
+    BUILD_ERROR = "BuildError"
 
 
 # Model Definitions
@@ -84,7 +89,7 @@ class LocalContext(BaseModel):
     max_turns: int
     response: CodeGenResponse | None = None
     gen_code_filepath: str
-    is_retry_gen_code: bool
+    is_code_check_error: IsCodeCheckError
     add_prompts: List[str]
     results_dir: Path
     playwright_info_file: str

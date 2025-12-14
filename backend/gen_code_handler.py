@@ -19,6 +19,7 @@ from base import (
     DonePayload,
     DoneStatus,
     EventType,
+    IsCodeCheckError,
     LocalContext,
     PromptRequest,
     SystemError,
@@ -198,23 +199,22 @@ async def handle_gen_code(
                     break
                 logger.debug("[CP3] Continuing to run_build()")
 
-            # ------------------------------
-            # 7. Loop judge (Retry decision)
-            # ------------------------------
+            # ------------------------------------------
+            # 7. LJ1: Loop Judge for ESLint check result
+            # ------------------------------------------
             logger.debug(f"[Loop] Current debug_mode: {debug_mode}")
             logger.debug(
-                f"[Loop] context.is_retry_gen_code: {context.is_retry_gen_code}"
+                f"[Loop] context.is_code_check_error: {context.is_code_check_error}"
             )
-            if context.is_retry_gen_code:
-                if not debug_mode == DebugMode.BYPASS:
-                    logger.debug("[Loop] Retry code generation")
-                    continue
+            if context.is_code_check_error == IsCodeCheckError.ESLINT_ERROR:
+                logger.debug("[Loop] Retry code generation")
+                continue
 
             # -------------------
             # 8. Call run_build()
             # -------------------
             logger.debug(f"[run_build] context.build_check: {context.build_check}")
-            if context.build_check:
+            if context.build_check and debug_mode != DebugMode.SKIP_AGENT:
                 logger.debug("[run_build] Call run_build()")
                 build_result = await run_build(context, settings)
                 logger.debug(f"[run_build] build_result: {build_result}")
@@ -232,6 +232,7 @@ async def handle_gen_code(
                             "rule_id": "npm run build",
                             "detail": build_result.detail,
                         }
+                        context.is_code_check_error = IsCodeCheckError.BUILD_ERROR
                         yield await sse_event(
                             EventType.CHECK_RESULT, build_check_payload
                         )
@@ -245,13 +246,21 @@ async def handle_gen_code(
                         "rule_id": "",
                         "detail": "",
                     }
+                    context.is_code_check_error = IsCodeCheckError.NO_ERROR
                     logger.debug("[run_build] Build succeeded")
                     yield await sse_event(EventType.CHECK_RESULT, build_check_payload)
                     break
 
-            # --------------------
-            # 9. Retry limit check
-            # --------------------
+            # ------------------------------------------------
+            # 9. LJ2: Loop Judge for Check result, Retry limit
+            # ------------------------------------------------
+            logger.debug(f"[Loop] Current debug_mode: {debug_mode}")
+            logger.debug(
+                f"[Loop] context.is_code_check_error: {context.is_code_check_error}"
+            )
+            if context.is_code_check_error == IsCodeCheckError.NO_ERROR:
+                logger.debug("[Loop] Finished (break)")
+                break
             logger.debug(
                 f"[retry limit check] i={i} settings.code_gen_retry={settings.code_gen_retry}"
             )

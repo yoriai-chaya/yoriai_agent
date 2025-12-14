@@ -15,6 +15,7 @@ from base import (
     DonePayload,
     DoneStatus,
     EventType,
+    IsCodeCheckError,
     LocalContext,
     PromptCategory,
     PromptHeaderKey,
@@ -110,7 +111,7 @@ async def create_session(request: PromptRequest):
 # for Debug
 async def wait_for_console_input() -> DebugMode:
     loop = asyncio.get_event_loop()
-    prompt = 'Enter cmd - "e":end, "s":skip agent, "c": continue, "b": bypass: '
+    prompt = 'Enter cmd - "e":end, "s":skip agent, "c": continue: '
     user_input = await loop.run_in_executor(None, input, prompt)
     cmd = user_input.strip().lower()
     for mode in DebugMode:
@@ -241,7 +242,7 @@ async def stream_service_get(session_id: str):
             output_dir=output_dir,
             max_turns=settings.openai_max_turns,
             gen_code_filepath="",
-            is_retry_gen_code=False,
+            is_code_check_error=IsCodeCheckError.NO_ERROR,
             add_prompts=[],
             results_dir=results,
             playwright_info_file=playwright_info_file,

@@ -1,6 +1,13 @@
 from agents import ItemHelpers, Runner
 
-from base import CodeCheckResult, EventType, LocalContext, PromptRequest, StreamResponse
+from base import (
+    CodeCheckResult,
+    EventType,
+    IsCodeCheckError,
+    LocalContext,
+    PromptRequest,
+    StreamResponse,
+)
 from custom_agents import code_check_agent
 from logger import logger
 
@@ -33,13 +40,12 @@ async def check_gen_code(request: PromptRequest, context: LocalContext):
                     item_result = output.result
                     logger.debug(f"result: {item_result}")
                     if not item_result:
-                        context.is_retry_gen_code = False
                         raise Exception(f"code check failed: {output.error_detail}")
 
                     eslint_result = output.eslint_result
                     logger.debug(f"eslint_result: {eslint_result}")
                     if eslint_result:
-                        context.is_retry_gen_code = False
+                        context.is_code_check_error = IsCodeCheckError.ESLINT_ERROR
                         response = StreamResponse(
                             event=EventType.CHECK_RESULT,
                             payload={
@@ -51,7 +57,7 @@ async def check_gen_code(request: PromptRequest, context: LocalContext):
                         )
                         yield response.to_json_line()
                     else:
-                        context.is_retry_gen_code = True
+                        context.is_code_check_error = IsCodeCheckError.NO_ERROR
                         eslint_infos = output.eslint_info or []
                         for eslint_info in eslint_infos:
                             desc = (eslint_info.description or "").strip()
