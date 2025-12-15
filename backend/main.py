@@ -1,8 +1,6 @@
 import asyncio
 import json
-import re
 from datetime import datetime
-from pathlib import Path
 from typing import Dict
 from uuid import uuid4
 
@@ -15,8 +13,6 @@ from base import (
     DonePayload,
     DoneStatus,
     EventType,
-    IsCodeCheckError,
-    LocalContext,
     PromptCategory,
     PromptHeaderKey,
     PromptRequest,
@@ -25,31 +21,13 @@ from base import (
     StartedStatus,
     SystemError,
 )
-from common import resolve_path
 from config import get_settings
+from context_factory import create_local_context
 from gen_code_handler import handle_gen_code
 from logger import logger
 from place_files_handler import handle_place_files
-from prompt_parser import extract_from_prompt, parse_build_check
+from prompt_parser import extract_from_prompt, parse_build_check, resolve_placeholders
 from run_tests_handler import handler_run_tests
-
-
-# Internal Functions
-def _resolve_placeholders(prompt: str, context: LocalContext) -> str:
-    def replacer(match):
-        logger.debug("replacer called")
-        file_path = match.group(1).strip()
-        logger.debug(f"file_path: {file_path}")
-        full_path = context.output_dir / file_path
-        logger.debug(f"full_path: {full_path}")
-        try:
-            content = Path(str(full_path)).read_text(encoding="utf-8")
-            return f"[{file_path}]\n```{Path(file_path).suffix.lstrip('.')}\n{content}\n```"
-        except FileNotFoundError as e:
-            raise e
-
-    filled = re.sub(r"\{\{file:(.+?)\}\}", replacer, prompt)
-    return filled
 
 
 async def sse_event(event_name: str, payload: dict) -> str:
@@ -175,89 +153,22 @@ async def stream_service_get(session_id: str):
                 return
 
         try:
-            output_dir = resolve_path(settings.output_dir)
-        except Exception as e:
-            logger.error(f"_resolve_path error: {e}")
-            yield await sse_system_error(
-                error="Resolve path error", detail=str(e), sse_event=sse_event
+            context = create_local_context(
+                category=category, build_check=build_check, settings=settings
             )
-            yield await sse_failed_done("Path error", sse_event=sse_event)
-            return
-        logger.debug(f"output_dir: {output_dir}")
-
-        custom_config_file = output_dir / settings.playwright_customconfig_file
-        if not custom_config_file.exists():
-            logger.error(f"{custom_config_file} not found")
-            yield await sse_system_error(
-                error="Config file error",
-                detail=f"{custom_config_file} not found",
-                sse_event=sse_event,
-            )
-            yield await sse_failed_done("Config error", sse_event=sse_event)
-            return
-
-        logger.debug(f"custom_config_file: {custom_config_file}")
-        try:
-            with open(custom_config_file, "r") as f:
-                custom_config = json.load(f)
         except Exception as e:
-            logger.error(f"{custom_config_file} open failed: {e}")
+            logger.error(f"create_local_context error: {e}")
             yield await sse_system_error(
-                error="Config file open error",
+                error="ContextError",
                 detail=str(e),
                 sse_event=sse_event,
             )
-            yield await sse_failed_done("Config file error", sse_event=sse_event)
+            yield await sse_failed_done("Context error", sse_event=sse_event)
             return
-
-        base_url = custom_config["base_url"]
-        logger.debug(f"base_url: {base_url}")
-        results = custom_config["results"]
-        logger.debug(f"results: {results}")
-        playwright_info_file = custom_config["playwright_info_file"]
-        logger.debug(f"playwright_info_file: {playwright_info_file}")
-        playwright_report_file = custom_config["playwright_report_file"]
-        logger.debug(f"playwright_report_file: {playwright_report_file}")
-        playwright_report_summary_file = custom_config["playwright_report_summary_file"]
-        logger.debug(
-            f"playwright_report_summary_file: {playwright_report_summary_file}"
-        )
-        archive_dir = settings.archive_dir
-        archive_dir.mkdir(exist_ok=True)
-        abs_archive_dir = resolve_path(archive_dir)
-        stepid_dir = abs_archive_dir / step_id
-        try:
-            stepid_dir.mkdir(exist_ok=False)
-        except Exception as e:
-            logger.error(f"{str(stepid_dir)} mkdir failed: {e}")
-            yield await sse_system_error(
-                error="archive mkdir error",
-                detail=str(e),
-                sse_event=sse_event,
-            )
-            yield await sse_failed_done("archive mkdir error", sse_event=sse_event)
-            return
-        context = LocalContext(
-            category=category,
-            output_dir=output_dir,
-            max_turns=settings.openai_max_turns,
-            gen_code_filepath="",
-            is_code_check_error=IsCodeCheckError.NO_ERROR,
-            add_prompts=[],
-            results_dir=results,
-            playwright_info_file=playwright_info_file,
-            playwright_report_file=playwright_report_file,
-            playwright_report_summary_file=playwright_report_summary_file,
-            test_file="dummy.spec.ts",
-            before_mtime=0,
-            step_id=step_id,
-            stepid_dir=stepid_dir,
-            build_check=build_check,
-        )
         logger.debug(f"context: {context}")
 
         try:
-            resolved_prompt = _resolve_placeholders(prompt=prompt, context=context)
+            resolved_prompt = resolve_placeholders(prompt=prompt, context=context)
         except Exception as e:
             logger.error("_resolve_placeholders failed")
             yield await sse_system_error(

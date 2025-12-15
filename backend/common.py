@@ -5,19 +5,21 @@ from pathlib import Path
 from logger import logger
 
 
-def resolve_path(path_str: str) -> Path:
-    logger.debug(f"resolve_path called: {path_str}")
-    p = Path(path_str)
-    if p.is_absolute():
+def resolve_path(dir_name: Path) -> Path:
+    """
+    Resolves the specified dir_name into an absolute path.
+    """
+    logger.debug(f"resolve_path called: dir_name={dir_name}")
+    if dir_name.is_absolute():
         # Absolute path
-        if not p.exists():
-            raise FileNotFoundError(f"Path '{path_str}' not found")
-        logger.debug(f"Absolute path resolved: {p}")
-        return p
+        if not dir_name.exists():
+            raise FileNotFoundError(f"dir_name '{dir_name}' not found")
+        logger.debug(f"Absolute path resolved: {dir_name}")
+        return dir_name
     # Relative path
     base = Path().resolve()
     logger.debug(f"base: {base}")
-    abs_path = (base / p).resolve()
+    abs_path = (base / dir_name).resolve()
     logger.debug(f"abs_path: {abs_path}")
     if not abs_path.exists():
         raise FileNotFoundError(f"Path '{abs_path}' not found")

@@ -100,6 +100,7 @@ class LocalContext(BaseModel):
     step_id: str
     stepid_dir: Path
     build_check: bool | None = None
+    agents_prompt_filepath: str
 
 
 class ESLintInfo(BaseModel):

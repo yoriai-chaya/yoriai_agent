@@ -1,5 +1,26 @@
 import re
+from pathlib import Path
 from typing import Optional
+
+from base import LocalContext
+from logger import logger
+
+
+def resolve_placeholders(prompt: str, context: LocalContext) -> str:
+    def replacer(match):
+        logger.debug("replacer called")
+        file_path = match.group(1).strip()
+        logger.debug(f"file_path: {file_path}")
+        full_path = context.output_dir / file_path
+        logger.debug(f"full_path: {full_path}")
+        try:
+            content = Path(str(full_path)).read_text(encoding="utf-8")
+            return f"[{file_path}]\n```{Path(file_path).suffix.lstrip('.')}\n{content}\n```"
+        except FileNotFoundError as e:
+            raise e
+
+    filled = re.sub(r"\{\{file:(.+?)\}\}", replacer, prompt)
+    return filled
 
 
 def extract_header_section(prompt: str) -> str:
@@ -41,20 +62,19 @@ def extract_from_prompt(prompt: str, key: str) -> Optional[str]:
     return fields.get(key)
 
 
-def parse_build_check(value: Optional[str]) -> Optional[bool]:
+def parse_build_check(value: Optional[str]) -> bool:
     """
     Convert BuildCheck header value to bool.
     Returns:
         True  : "on"
-        False : "off"
-        None  : invalid or not specified
+        False : "off" or not specified
     """
     if value is None:
-        return None
+        return False
 
     v = value.strip().lower()
     if v == "on":
         return True
     if v == "off":
         return False
-    return None
+    return False
