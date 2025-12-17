@@ -2,16 +2,19 @@ import json
 import sys
 from pathlib import Path
 
-from base import LoadPlaywrightReport
-from common import resolve_path
-from config import get_settings
-from edit_playwright_report import load_playwright_report
-from logger import logger
-
 if __name__ == "__main__":
+    base_dir = Path(__file__).resolve().parent.parent
+    if str(base_dir) not in sys.path:
+        sys.path.insert(0, str(base_dir))
+
+    from base import LoadPlaywrightReport
+    from config import get_settings
+    from edit_playwright_report import load_playwright_report
+    from logger import logger
+
     # Get Settings / Config Data
     settings = get_settings()
-    output_dir = resolve_path(settings.output_dir)
+    output_dir = base_dir / settings.output_dir
     logger.debug(f"output_dir: {output_dir}")
     custom_config_file = output_dir / settings.playwright_customconfig_file
     logger.debug(f"custom_config_file: {custom_config_file}")

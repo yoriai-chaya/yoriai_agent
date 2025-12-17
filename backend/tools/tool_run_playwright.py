@@ -3,9 +3,6 @@ import subprocess
 import sys
 from pathlib import Path
 
-from config import get_settings
-from logger import logger
-
 
 def run_playwright_tests(
     test_file: str, output_dir: Path, results: Path, project: str
@@ -70,6 +67,13 @@ def run_playwright_tests(
 
 
 if __name__ == "__main__":
+    base_dir = Path(__file__).resolve().parent.parent
+    if str(base_dir) not in sys.path:
+        sys.path.insert(0, str(base_dir))
+
+    from config import get_settings
+    from logger import logger
+
     parser = argparse.ArgumentParser(description="Run Playwright Tool")
     parser.add_argument(
         "-f", "--file", required=True, help="Test file to run (e.g. xxx.spec.ts)"
@@ -87,7 +91,8 @@ if __name__ == "__main__":
         sys.exit(1)
 
     settings = get_settings()
-    output_dir = settings.output_dir
+    # output_dir = settings.output_dir
+    output_dir = base_dir / settings.output_dir
     results = settings.test_results_dir
     my_name = Path(__file__).name
     logger.info(f"{my_name} Started")
