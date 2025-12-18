@@ -7,7 +7,7 @@ from openai.types.responses import ResponseTextDeltaEvent
 from agent_logger import AgentLogger
 from base import EventType, LocalContext, PromptRequest, StreamResponse
 from config import get_settings
-from custom_agents import code_gen_agent
+from custom_agents import get_code_gen_agent
 from logger import logger
 
 # for fault injection
@@ -40,6 +40,7 @@ async def gen_code(request: PromptRequest, context: LocalContext):
     logger.debug("gen_code called")
     try:
         _maybe_inject_fault(request.prompt)
+        code_gen_agent = get_code_gen_agent()
         result = Runner.run_streamed(
             starting_agent=code_gen_agent,
             input=request.prompt,

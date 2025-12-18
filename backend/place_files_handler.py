@@ -9,7 +9,7 @@ from base import (
     DoneStatus,
     EventType,
 )
-from custom_agents import place_files_agent
+from custom_agents import get_place_files_agent
 from logger import logger
 
 
@@ -22,6 +22,7 @@ async def handle_place_files(
     final_payload = DonePayload(
         status=DoneStatus.COMPLETED, message="PlaceFiles completed"
     )
+    place_files_agent = get_place_files_agent()
     result = Runner.run_streamed(
         starting_agent=place_files_agent,
         input=prompt,

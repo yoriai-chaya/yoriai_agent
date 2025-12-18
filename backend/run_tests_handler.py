@@ -6,9 +6,10 @@ from base import (
     DonePayload,
     DoneStatus,
     EventType,
+    FunctionResult,
     SystemError,
 )
-from custom_agents import run_tests_agent
+from custom_agents import get_run_tests_agent
 from eval_tests import eval_test_results
 from logger import logger
 
@@ -24,6 +25,7 @@ async def handler_run_tests(
     )
 
     try:
+        run_tests_agent = get_run_tests_agent()
         result = Runner.run_streamed(
             starting_agent=run_tests_agent,
             input=prompt,
@@ -41,24 +43,28 @@ async def handler_run_tests(
                 )
             elif event.type == "run_item_stream_event":
                 if event.item.type == "tool_call_item":
-                    logger.debug("Event: tool_call_item")
+                    logger.debug(f"Event: tool_call_item result={result}")
                 elif event.item.type == "tool_call_output_item":
-                    logger.debug("Event: tool_call_output_item")
+                    logger.debug(f"Event: tool_call_output_item result={result}")
                 elif event.item.type == "message_output_item":
-                    logger.debug("Event: message_output_item")
+                    logger.debug(f"Event: message_output_item result={result}")
 
-        final = result.final_output
+        final: FunctionResult = result.final_output
         logger.trace(f"final: {final}")
-
-        # Evaluate
-        test_results = eval_test_results(context=context)
-        logger.trace(f"test_results: {test_results}")
-        yield await sse_event(EventType.TEST_RESULT, test_results.model_dump())
-
-        if not final.result:
+        if final.abort_flg:
             final_payload = DonePayload(
-                status=DoneStatus.FAILED, message="RunTests failed"
+                status=DoneStatus.FAILED,
+                message=final.detail or "run_playwright failed",
             )
+        else:
+            # Evaluate
+            test_results = eval_test_results(context=context)
+            logger.trace(f"test_results: {test_results}")
+            yield await sse_event(EventType.TEST_RESULT, test_results.model_dump())
+            if not final.result:
+                final_payload = DonePayload(
+                    status=DoneStatus.FAILED, message="RunTests failed"
+                )
 
     except Exception as e:
         logger.error(f"Unexpected error: {e}")

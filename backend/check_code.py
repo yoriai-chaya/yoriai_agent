@@ -8,13 +8,14 @@ from base import (
     PromptRequest,
     StreamResponse,
 )
-from custom_agents import code_check_agent
+from custom_agents import get_code_check_agent
 from logger import logger
 
 
 async def check_gen_code(request: PromptRequest, context: LocalContext):
     logger.debug("check_gen_code called")
     file_path = context.gen_code_filepath
+    code_check_agent = get_code_check_agent()
     result = Runner.run_streamed(
         starting_agent=code_check_agent,
         input=file_path,

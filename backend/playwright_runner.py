@@ -23,6 +23,10 @@ def run_playwright(
     ctx.context.test_file = test_file
     test_path = output_dir / test_dir / test_file
     logger.debug(f"test_path: {str(test_path)}")
+    if not test_path.is_file():
+        err_msg = f"{test_path} not found"
+        func_result = FunctionResult(result=False, abort_flg=True, detail=err_msg)
+        return func_result
 
     playwright_report_file = ctx.context.playwright_report_file
     logger.debug(f"playwright_report_file: {playwright_report_file}")

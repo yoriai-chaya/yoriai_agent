@@ -2,13 +2,20 @@ import re
 from pathlib import Path
 from typing import Optional
 
+import yaml
+
 from base import LocalContext
+from config import get_settings
 from logger import logger
+
+DIR_PROMPTS = "prompts"
 
 
 def resolve_placeholders(prompt: str, context: LocalContext) -> str:
+    logger.debug(f"resolve_placeholders called. prompt:{prompt}")
+
     def replacer(match):
-        logger.debug("replacer called")
+        logger.debug(f"replacer called. match:{match}")
         file_path = match.group(1).strip()
         logger.debug(f"file_path: {file_path}")
         full_path = context.output_dir / file_path
@@ -78,3 +85,49 @@ def parse_build_check(value: Optional[str]) -> bool:
     if v == "off":
         return False
     return False
+
+
+def load_agents_prompt() -> dict:
+    logger.debug("load_agents_prompt called")
+    settings = get_settings()
+    agents_prompt_file = settings.agents_prompt_file
+    base = Path().resolve()
+    logger.debug(f"base: {base}")
+    path = base / DIR_PROMPTS / agents_prompt_file
+    logger.debug(f"path: {path}")
+
+    try:
+        with path.open() as f:
+            data = yaml.safe_load(f)
+    except yaml.YAMLError as e:
+        logger.error(f"Invalid YAML format: {path}")
+        raise ValueError(f"Invalid YAML format: {path}") from e
+
+    if data is None:
+        raise ValueError(f"YAML file is empty: {path}")
+
+    if not isinstance(data, dict):
+        raise ValueError(
+            f"YAML root must be mapping(dict): {path}, actual={type(data)}"
+        )
+    logger.debug("load_agents_prompt return")
+    return data
+
+
+def require_str(data: dict, key: str) -> str:
+    logger.debug("requre_str called")
+    if key not in data:
+        raise KeyError(
+            f"Invalid agents prompt YAML configuration: "
+            f"required key '{key}' is not defined. "
+            f"Please add  '{key}' to the YAML file. "
+            f"your defined keys={list(data.keys())}"
+        )
+    value = data[key]
+    if not isinstance(value, str):
+        raise TypeError(
+            f"Invalid type for '{key}' in YAML, "
+            f"expected=str, actual={type(value).__name__}"
+        )
+    logger.debug("require_str return")
+    return value

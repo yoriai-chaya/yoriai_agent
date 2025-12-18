@@ -27,6 +27,7 @@ from config import get_settings
 from eslint_checker import run_eslint
 from logger import logger
 from playwright_runner import run_playwright
+from prompt_parser import load_agents_prompt, require_str
 
 SNAPSHOT_ERROR_MESSAGE_PREF = "Error: A snapshot doesn't exist at"
 
@@ -190,59 +191,98 @@ save_handoff = handoff(
     tool_description_override="Generate and save code to file",
 )
 
-CODE_GEN = """
-あなたはNext.jsフレームワークのアプリケーション開発を担う
-Typescriptのプログラマです。
-プログラム生成のための要求仕様や条件に基づき、
-TypeScriptプログラムを生成します。
-生成したコードをsave_codeツールを使ってファイル保存してください。
-"""
-code_gen_agent = Agent[LocalContext](
-    name="CodeGenAgent",
-    instructions=CODE_GEN,
-    model=model,
-    output_type=CodeType,
-    handoffs=[save_handoff],
-)
+# Get Agentes
+_code_gen_agent: Agent[LocalContext] | None = None
+_code_check_agent: Agent[LocalContext] | None = None
+_place_files_agent: Agent[LocalContext] | None = None
+_run_tests_agent: Agent[LocalContext] | None = None
 
-CODE_CHECK = """
-あなたはNext.jsフレームワークのアプリケーションプログラム
-の静的チェックを行う専門家です。
-指定されたプログラムファイルに記述された内容を
-check_codeツールを使って静的チェックを行います。
-"""
-code_check_agent = Agent[LocalContext](
-    name="CodeCheckAgent",
-    instructions=CODE_CHECK,
-    model=model,
-    tools=[check_code],
-    output_type=CodeCheckResult,
-)
 
-PLACE_FILES = """
-あなたはNext.jsフレームワークのアプリケーションで必要なファイル資材を
-適切なディレクトリに配置するアドミニストレータです。
-指定されたファイルを指定されたコピー元ディレクトリからコピー先
-ディレクトリに配置します。
-配置は指定されたツールを使います。
-"""
-place_files_agent = Agent[LocalContext](
-    name="PlaceFilesAgent",
-    instructions=PLACE_FILES,
-    model=model,
-    output_type=AgentResult,
-    tools=[place_files],
-)
+def get_code_gen_agent() -> Agent[LocalContext]:
+    logger.debug("get_code_gen_agent called")
+    global _code_gen_agent
+    if _code_gen_agent is not None:
+        logger.debug("get_code_gen_agent return")
+        return _code_gen_agent
 
-RUN_TESTS = """
-あなたはNext.jsのアプリケーションのテスト実行を行う専門家です。
-指定されたディレクトリにある指定されたテストプログラムファイルに
-記述された内容を登録されたツールを使ってテストを実行します。
-"""
-run_tests_agent = Agent[LocalContext](
-    name="RunTestsAgent",
-    instructions=RUN_TESTS,
-    model=model,
-    tools=[run_tests],
-    output_type=FunctionResult,
-)
+    agents_prompt = load_agents_prompt()
+    logger.debug(f"agents_prompt: {agents_prompt}")
+    prompt_code_gen = require_str(data=agents_prompt, key="code_gen")
+    logger.debug(f"prompt_code_gen: {prompt_code_gen}")
+    _code_gen_agent = Agent[LocalContext](
+        name="CodeGenAgent",
+        instructions=prompt_code_gen,
+        model=model,
+        output_type=CodeType,
+        handoffs=[save_handoff],
+    )
+    logger.debug("get_code_gen_agent return")
+    return _code_gen_agent
+
+
+def get_code_check_agent() -> Agent[LocalContext]:
+    logger.debug("get_code_check_agent called")
+    global _code_check_agent
+    if _code_check_agent is not None:
+        logger.debug("get_code_check_agent return")
+        return _code_check_agent
+
+    agents_prompt = load_agents_prompt()
+    logger.debug(f"agents_prompt: {agents_prompt}")
+    prompt_code_check = require_str(data=agents_prompt, key="code_check")
+    logger.debug(f"prompt_code_check: {prompt_code_check}")
+    _code_check_agent = Agent[LocalContext](
+        name="CodeCheckAgent",
+        instructions=prompt_code_check,
+        model=model,
+        tools=[check_code],
+        output_type=CodeCheckResult,
+    )
+    logger.debug("get_code_check_agent return")
+    return _code_check_agent
+
+
+def get_place_files_agent() -> Agent[LocalContext]:
+    logger.debug("get_place_files_agent called")
+    global _place_files_agent
+    if _place_files_agent is not None:
+        logger.debug("get_place_files_agent return")
+        return _place_files_agent
+
+    agents_prompt = load_agents_prompt()
+    logger.debug(f"agents_prompt: {agents_prompt}")
+    prompt_place_files = require_str(data=agents_prompt, key="place_files")
+    logger.debug(f"prompt_place_files: {prompt_place_files}")
+
+    _place_files_agent = Agent[LocalContext](
+        name="PlaceFilesAgent",
+        instructions=prompt_place_files,
+        model=model,
+        output_type=AgentResult,
+        tools=[place_files],
+    )
+    logger.debug("get_place_files_agent return")
+    return _place_files_agent
+
+
+def get_run_tests_agent() -> Agent[LocalContext]:
+    logger.debug("get_run_tests_agent called")
+    global _run_tests_agent
+    if _run_tests_agent is not None:
+        logger.debug("get_run_tests_agent return")
+        return _run_tests_agent
+
+    agents_prompt = load_agents_prompt()
+    logger.debug(f"agents_prompt: {agents_prompt}")
+    prompt_run_tests = require_str(data=agents_prompt, key="run_tests")
+    logger.debug(f"prompt_run_tests: {prompt_run_tests}")
+
+    _run_tests_agent = Agent[LocalContext](
+        name="RunTestsAgent",
+        instructions=prompt_run_tests,
+        model=model,
+        tools=[run_tests],
+        output_type=FunctionResult,
+    )
+    logger.debug("get_run_tests_agent return")
+    return _run_tests_agent
