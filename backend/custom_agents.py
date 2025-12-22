@@ -38,7 +38,7 @@ async def on_save(ctx: RunContextWrapper[LocalContext], input_data: CodeSaveData
     output_dir = Path(str(ctx.context.output_dir))
     target_dir = output_dir / input_data.directory
     logger.debug(f"target_dir: {str(target_dir)}")
-    target_dir.mkdir(exist_ok=True)
+    target_dir.mkdir(parents=True, exist_ok=True)
 
     # Save file
     file_path = os.path.join(target_dir, input_data.filename)

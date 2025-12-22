@@ -47,6 +47,7 @@ def resolve_path() -> Dict[str, Path]:
     backup_path = base_dir / "backup"
 
     paths = {
+        "output_path": output_path,
         "app_path": app_path,
         "tests_path": tests_path,
         "public_path": public_path,
@@ -116,6 +117,7 @@ def backup_targets(paths: Dict[str, Path]) -> None:
 def restore_app_page(paths: Dict[str, Path]) -> None:
     logger.info("== Restore original app/page.tsx ==")
 
+    # copy sample/app/page_org.tsx -> output/app/page.tsx
     sample_path = paths["sample_path"]
     sample_page = sample_path / "app" / "page_org.tsx"
     logger.debug(f"Sample page: {sample_page}")
@@ -126,6 +128,32 @@ def restore_app_page(paths: Dict[str, Path]) -> None:
     app_page = app_path / "page.tsx"
     logger.log("TOOL", f"Initial page.tsx Copy: {sample_page} -> {app_page}")
     shutil.copy2(sample_page, app_page)
+
+    # copy sample/app/layout_indicator.tsx -> output/app/layout.tsx
+    sample_layout = sample_path / "app" / "layout_indicator.tsx"
+    logger.debug(f"Sample layout: {sample_layout}")
+    if not sample_layout.is_file():
+        raise RuntimeError(f"{sample_layout} not found.")
+
+    app_layout = app_path / "layout.tsx"
+    logger.log("TOOL", f"Initial layout.tsx Copy: {sample_layout} -> {app_layout}")
+    shutil.copy2(sample_layout, app_layout)
+
+
+def clean_dot_next(paths: Dict[str, Path]) -> None:
+    logger.info("== Clean Next.js cache (.next) ==")
+
+    output_path = paths["output_path"]
+    dot_next_dir = output_path / ".next"
+
+    if not dot_next_dir.is_dir():
+        logger.warning(f"[CLEAN_DOT_NEXT] .next dir not found. skip: {dot_next_dir}")
+        return
+    logger.log(
+        "TOOL",
+        f"[CLEAN_DOT_NEXT] Remove Next.js cache directory recursively: {dot_next_dir}",
+    )
+    shutil.rmtree(dot_next_dir)
 
 
 def clean_app_booking(paths: Dict[str, Path]) -> None:
@@ -238,6 +266,10 @@ def main() -> int:
         # restore page
         error_message = "restore_app_page"
         restore_app_page(paths=paths)
+
+        # clean .next
+        error_message = "clean_dot_next"
+        clean_dot_next(paths=paths)
 
         # clean output/app/booking/*
         error_message = "clean_app_booking"
