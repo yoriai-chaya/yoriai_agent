@@ -95,6 +95,7 @@ class LocalContext(BaseModel):
     playwright_info_file: str
     playwright_report_file: str
     playwright_report_summary_file: str
+    screenshot_dir: str
     test_file: str
     before_mtime: float
     step_id: str

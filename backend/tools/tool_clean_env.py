@@ -247,6 +247,19 @@ def clean_results(paths: Dict[str, Path]) -> None:
                 logger.log("TOOL", f"[CLEAN_RESULTS] Remove: {png_file}")
                 png_file.unlink()
 
+    # remove output/results/evidence/*.png
+    evidence_dir = paths["results_path"] / "evidence"
+    if not evidence_dir.is_dir():
+        logger.warning(f"[CLEAN_RESULTS] evidence dir not found in {results_dir}")
+        return
+    else:
+        png_files = list(evidence_dir.glob("*.png"))
+        if not png_files:
+            logger.warning(f"[CLEAN_RESULTS] no *.png files found in {evidence_dir}")
+        else:
+            for png_file in png_files:
+                logger.log("TOOL", f"[CLEAN_RESULTS] Remove: {png_file}")
+                png_file.unlink()
     return
 
 

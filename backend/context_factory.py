@@ -37,6 +37,8 @@ def create_local_context(
     logger.debug(f"playwright_report_file: {playwright_report_file}")
     playwright_report_summary_file = custom_config["playwright_report_summary_file"]
     logger.debug(f"playwright_report_summary_file: {playwright_report_summary_file}")
+    screenshot_dir = custom_config["screenshot_dir"]
+    logger.debug(f"screenshot_dir: {screenshot_dir}")
 
     now = datetime.now()
     formatted_time = now.strftime("%Y%m%d-%H%M%S")
@@ -63,6 +65,7 @@ def create_local_context(
         playwright_info_file=playwright_info_file,
         playwright_report_file=playwright_report_file,
         playwright_report_summary_file=playwright_report_summary_file,
+        screenshot_dir=screenshot_dir,
         test_file="dummy.spec.ts",
         before_mtime=0,
         step_id=step_id,
