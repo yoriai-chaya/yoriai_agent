@@ -147,7 +147,11 @@ async def place_files(
 # Function Tools
 @function_tool
 async def run_tests(
-    ctx: RunContextWrapper, test_dir: str, test_file: str, project: str
+    ctx: RunContextWrapper,
+    test_dir: str,
+    test_file: str,
+    project: str,
+    screenshot_file: str,
 ) -> FunctionResult:
     """Run tests using playwright.
 
@@ -155,6 +159,7 @@ async def run_tests(
         test_dir: directory containing test files
         test_file: test file name
         project: project name
+        screenshot_file: screenshot file name
 
     Return:
         FunctionResult: execute command result
@@ -166,10 +171,15 @@ async def run_tests(
     logger.debug(f"test_dir: {test_dir}")
     logger.debug(f"test_file: {test_file}")
     logger.debug(f"project: {project}")
+    logger.debug(f"screenshot_file: {screenshot_file}")
 
     # Run Tests
     result = run_playwright(
-        ctx=ctx, test_dir=test_dir, test_file=test_file, project=project
+        ctx=ctx,
+        test_dir=test_dir,
+        test_file=test_file,
+        project=project,
+        screenshot_file=screenshot_file,
     )
     logger.debug(f"result: {result}")
 

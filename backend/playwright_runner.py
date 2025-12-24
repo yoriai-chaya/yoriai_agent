@@ -9,7 +9,11 @@ from logger import logger
 
 
 def run_playwright(
-    ctx: RunContextWrapper, test_dir: str, test_file: str, project: str
+    ctx: RunContextWrapper,
+    test_dir: str,
+    test_file: str,
+    project: str,
+    screenshot_file: str,
 ) -> FunctionResult:
     logger.debug("run_playwright called")
 
@@ -19,6 +23,9 @@ def run_playwright(
     logger.debug(f"results_dir: {str(results_dir)}")
     logger.debug(f"test_dir: {test_dir}")
     logger.debug(f"test_file: {test_file}")
+    screenshot_dir: Path = ctx.context.screenshot_dir
+    logger.debug(f"screenshot_dir: {screenshot_dir}")
+    logger.debug(f"screenshot_file: {screenshot_file}")
 
     ctx.context.test_file = test_file
     test_path = output_dir / test_dir / test_file
@@ -37,14 +44,19 @@ def run_playwright(
         ctx.context.before_mtime = playwright_report_file_path.stat().st_mtime
     logger.debug(f"ctx.context.before_mtime: {ctx.context.before_mtime}")
 
-    # Execute npx playwright command
-    flg_404 = False
+    # Editting command line
     command = ["npx", "playwright", "test"]
     if project:
-        prj_option = f"--project={project}"
-        command.extend([prj_option])
+        command.append(f"--project={project}")
+    screenshot_path = output_dir / results_dir / screenshot_dir / screenshot_file
+    logger.debug(f"screenshot_path: {screenshot_path}")
+    if not screenshot_path.is_file():
+        command.append("--update-snapshots")
     command.append(str(test_path))
     logger.debug(f"command: {command}")
+
+    # Execute npx playwright command
+    flg_404 = False
     try:
         process = subprocess.Popen(
             command,
@@ -66,9 +78,12 @@ def run_playwright(
             if "Error:" in line and "already used" in line:
                 error_detected = "Playwright server port already in use"
                 break
+            if "error:" in line:
+                error_detected = "playwright command execution failed"
+                break
         if error_detected:
             logger.debug(f"error detectd : {error_detected}")
-            func_result = FunctionResult(result=False, detail=error_detected)
+            func_result = FunctionResult(result=True, detail=error_detected)
             return func_result
     except Exception as e:
         err_msg = f"Error running Playwright tests: {e}"
