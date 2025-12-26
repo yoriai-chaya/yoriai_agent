@@ -5,6 +5,7 @@ import {
   EventTypes,
   StreamResponse,
 } from "./types";
+import Image from "next/image";
 import Markdown from "./Markdown";
 
 interface StreamDetailProps {
@@ -47,6 +48,14 @@ function isSystemErrorEvent(
   event: StreamResponse
 ): event is Extract<StreamResponse, { event: typeof EventTypes.SYSTEM_ERROR }> {
   return event.event === EventTypes.SYSTEM_ERROR;
+}
+function isTestScreenshotEvent(
+  event: StreamResponse
+): event is Extract<
+  StreamResponse,
+  { event: typeof EventTypes.TEST_SCREENSHOT }
+> {
+  return event.event === EventTypes.TEST_SCREENSHOT;
 }
 
 // StreamDetail Function
@@ -206,6 +215,28 @@ const StreamDetail = ({ status, responseInfo }: StreamDetailProps) => {
                       )}
                     </div>
                   </span>
+                </div>
+              );
+            }
+
+            // ----- test_screenshot event -----
+            if (isTestScreenshotEvent(sr)) {
+              const { spec, filename, url } = sr.payload;
+              const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
+              const api_url = API_BASE + url;
+              console.log(`api_url: ${api_url}`);
+              return (
+                <div key={`screenshot-${idx}`} className="pl-4 mt-2">
+                  <div className="text-app-detail text-gray-600">
+                    Screenshot ({spec}: filename={filename})
+                  </div>
+                  <Image
+                    src={api_url}
+                    alt={filename}
+                    width={300}
+                    height={300}
+                    className="mt-1 border rounded max-w-full"
+                  />
                 </div>
               );
             }

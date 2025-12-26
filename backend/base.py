@@ -16,6 +16,7 @@ class EventType(StrEnum):
     AGENT_RESULT = "agent_result"
     TEST_RUN = "test_run"
     TEST_RESULT = "test_result"
+    TEST_SCREENSHOT = "test_screenshot"
 
 
 class StartedStatus(StrEnum):
@@ -83,6 +84,12 @@ class CodeGenResponse(BaseModel):
     code: str
 
 
+class ScreenshotInfo(BaseModel):
+    spec: str
+    filename: str
+    relative_url: str
+
+
 class LocalContext(BaseModel):
     category: str
     output_dir: Path
@@ -101,6 +108,7 @@ class LocalContext(BaseModel):
     step_id: str
     stepid_dir: Path
     build_check: bool | None = None
+    screenshots: List[ScreenshotInfo] = []
 
 
 class ESLintInfo(BaseModel):
@@ -186,3 +194,9 @@ class FunctionResult(BaseModel):
     result: bool
     abort_flg: bool = False
     detail: str | None = None
+
+
+class TestScreenshotPayload(BaseModel):
+    spec: str
+    filename: str
+    url: str

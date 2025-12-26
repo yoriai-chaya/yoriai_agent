@@ -6,7 +6,7 @@ from uuid import uuid4
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, StreamingResponse
+from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 
 from base import (
     DebugMode,
@@ -212,3 +212,13 @@ async def stream_service_get(session_id: str):
         media_type="text/event-stream",
         headers=headers,
     )
+
+
+@app.get("/artifacts/results/screenshot/{filename}")
+def get_screenshot(filename: str):
+    logger.debug("get_screenshot called")
+    path = settings.output_dir / "results" / "screenshot" / filename
+    logger.debug(f"path: {path}")
+    if not path.exists():
+        raise HTTPException(404)
+    return FileResponse(path, media_type="image/png")

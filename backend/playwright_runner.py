@@ -3,7 +3,7 @@ from pathlib import Path
 
 from agents import RunContextWrapper
 
-from base import FunctionResult
+from base import FunctionResult, ScreenshotInfo
 from common import archive
 from logger import logger
 
@@ -46,14 +46,21 @@ def run_playwright(
 
     # Editting command line
     command = ["npx", "playwright", "test"]
+    command.append(str(test_path))
     if project:
         command.append(f"--project={project}")
     screenshot_path = output_dir / results_dir / screenshot_dir / screenshot_file
     logger.debug(f"screenshot_path: {screenshot_path}")
     if not screenshot_path.is_file():
         command.append("--update-snapshots")
-    command.append(str(test_path))
     logger.debug(f"command: {command}")
+    relative_url = f"/artifacts/results/screenshot/{screenshot_file}"
+    logger.debug(f"relative_url: {relative_url}")
+    ctx.context.screenshots.append(
+        ScreenshotInfo(
+            spec=test_file, filename=screenshot_file, relative_url=relative_url
+        )
+    )
 
     # Execute npx playwright command
     flg_404 = False
@@ -83,7 +90,9 @@ def run_playwright(
                 break
         if error_detected:
             logger.debug(f"error detectd : {error_detected}")
-            func_result = FunctionResult(result=True, detail=error_detected)
+            func_result = FunctionResult(
+                result=False, abort_flg=True, detail=error_detected
+            )
             return func_result
     except Exception as e:
         err_msg = f"Error running Playwright tests: {e}"

@@ -42,6 +42,12 @@ export type TestResultPayload = {
   specs: TestResultSpec[];
 };
 
+export type TestScreenshotPayload = {
+  spec: string;
+  filename: string;
+  url: string;
+};
+
 export type StreamResponse =
   | {
       event: "started";
@@ -59,7 +65,8 @@ export type StreamResponse =
       event: "agent_result";
       payload: { result: boolean; error_detail: string };
     }
-  | { event: "test_result"; payload: TestResultPayload };
+  | { event: "test_result"; payload: TestResultPayload }
+  | { event: "test_screenshot"; payload: TestScreenshotPayload };
 
 export type ResponseEvent = {
   s_res: StreamResponse;
@@ -80,6 +87,7 @@ export const EventTypes = {
   AGENT_RESULT: "agent_result",
   TEST_RUN: "test_run",
   TEST_RESULT: "test_result",
+  TEST_SCREENSHOT: "test_screenshot",
 } as const;
 
 export type CheckResultEvent = {

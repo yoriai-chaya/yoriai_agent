@@ -8,6 +8,7 @@ from base import (
     EventType,
     FunctionResult,
     SystemError,
+    TestScreenshotPayload,
 )
 from custom_agents import get_run_tests_agent
 from eval_tests import eval_test_results
@@ -65,6 +66,12 @@ async def handler_run_tests(
                 final_payload = DonePayload(
                     status=DoneStatus.FAILED, message="RunTests failed"
                 )
+            for ss in context.screenshots:
+                payload = TestScreenshotPayload(
+                    spec=ss.spec, filename=ss.filename, url=ss.relative_url
+                )
+                logger.debug(f"payload: {payload}")
+                yield await sse_event(EventType.TEST_SCREENSHOT, payload.model_dump())
 
     except Exception as e:
         logger.error(f"Unexpected error: {e}")
