@@ -6,7 +6,7 @@ from base import (
     DonePayload,
     DoneStatus,
     EventType,
-    FunctionResult,
+    RunPlaywrightFunctionResult,
     SystemError,
     TestScreenshotPayload,
 )
@@ -50,7 +50,7 @@ async def handler_run_tests(
                 elif event.item.type == "message_output_item":
                     logger.debug(f"Event: message_output_item result={result}")
 
-        final: FunctionResult = result.final_output
+        final: RunPlaywrightFunctionResult = result.final_output
         logger.trace(f"final: {final}")
         if final.abort_flg:
             final_payload = DonePayload(
@@ -68,7 +68,10 @@ async def handler_run_tests(
                 )
             for ss in context.screenshots:
                 payload = TestScreenshotPayload(
-                    spec=ss.spec, filename=ss.filename, url=ss.relative_url
+                    spec=ss.spec,
+                    filename=ss.filename,
+                    url=ss.relative_url,
+                    updated=final.screenshot_updated,
                 )
                 logger.debug(f"payload: {payload}")
                 yield await sse_event(EventType.TEST_SCREENSHOT, payload.model_dump())

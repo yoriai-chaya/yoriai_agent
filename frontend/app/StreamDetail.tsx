@@ -221,14 +221,17 @@ const StreamDetail = ({ status, responseInfo }: StreamDetailProps) => {
 
             // ----- test_screenshot event -----
             if (isTestScreenshotEvent(sr)) {
-              const { spec, filename, url } = sr.payload;
+              const { spec, filename, url, updated } = sr.payload;
               const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
               const api_url = API_BASE + url;
               console.log(`api_url: ${api_url}`);
               return (
                 <div key={`screenshot-${idx}`} className="pl-4 mt-2">
                   <div className="text-app-detail text-gray-600">
-                    Screenshot ({spec}: filename={filename})
+                    <div>
+                      Screenshot: spec={spec}, filename={filename}, updated=
+                      {updated ? "true" : "false"}
+                    </div>
                   </div>
                   <Image
                     src={api_url}

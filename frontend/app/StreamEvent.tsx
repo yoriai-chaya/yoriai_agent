@@ -49,6 +49,14 @@ function isSystemErrorEvent(
 ): event is Extract<StreamResponse, { event: typeof EventTypes.SYSTEM_ERROR }> {
   return event.event === EventTypes.SYSTEM_ERROR;
 }
+function isTestScreenshotEvent(
+  event: StreamResponse
+): event is Extract<
+  StreamResponse,
+  { event: typeof EventTypes.TEST_SCREENSHOT }
+> {
+  return event.event === EventTypes.TEST_SCREENSHOT;
+}
 
 // StreamEvent Function
 const StreamEvent = ({ status, responseInfo }: StreamEventProps) => {
@@ -183,6 +191,24 @@ const StreamEvent = ({ status, responseInfo }: StreamEventProps) => {
                       <pre>
                         Total: {total} OK: {ok} NG: {ng}
                       </pre>
+                    </div>
+                  </div>
+                </div>
+              );
+            }
+
+            // ----- test_screenshot event -----
+            if (isTestScreenshotEvent(sr)) {
+              const { filename, updated } = sr.payload;
+              if (!updated) {
+                return null;
+              }
+              return (
+                <div key={`screenshot-${idx}`}>
+                  <div className="grid grid-cols-6 items-center">
+                    <div></div>
+                    <div className="col-span-5 text-app-detail ml-9 text-gray-500">
+                      <pre>{filename} created</pre>
                     </div>
                   </div>
                 </div>

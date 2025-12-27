@@ -19,8 +19,8 @@ from base import (
     CodeGenResponse,
     CodeSaveData,
     CodeType,
-    FunctionResult,
     LocalContext,
+    RunPlaywrightFunctionResult,
 )
 from common import archive
 from config import get_settings
@@ -152,7 +152,7 @@ async def run_tests(
     test_file: str,
     project: str,
     screenshot_file: str,
-) -> FunctionResult:
+) -> RunPlaywrightFunctionResult:
     """Run tests using playwright.
 
     Args:
@@ -162,7 +162,7 @@ async def run_tests(
         screenshot_file: screenshot file name
 
     Return:
-        FunctionResult: execute command result
+        RunPlaywrightFunctionResult: execute command result
 
     """
     logger.debug("run_tests called")
@@ -292,7 +292,7 @@ def get_run_tests_agent() -> Agent[LocalContext]:
         instructions=prompt_run_tests,
         model=model,
         tools=[run_tests],
-        output_type=FunctionResult,
+        output_type=RunPlaywrightFunctionResult,
     )
     logger.debug("get_run_tests_agent return")
     return _run_tests_agent

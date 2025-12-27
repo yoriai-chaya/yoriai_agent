@@ -46,6 +46,7 @@ export type TestScreenshotPayload = {
   spec: string;
   filename: string;
   url: string;
+  updated: boolean;
 };
 
 export type StreamResponse =

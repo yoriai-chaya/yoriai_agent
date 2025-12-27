@@ -196,7 +196,15 @@ class FunctionResult(BaseModel):
     detail: str | None = None
 
 
+class RunPlaywrightFunctionResult(BaseModel):
+    result: bool
+    abort_flg: bool = False
+    detail: str | None = None
+    screenshot_updated: bool = False
+
+
 class TestScreenshotPayload(BaseModel):
     spec: str
     filename: str
     url: str
+    updated: bool = False

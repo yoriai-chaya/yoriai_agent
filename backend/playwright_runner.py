@@ -3,7 +3,7 @@ from pathlib import Path
 
 from agents import RunContextWrapper
 
-from base import FunctionResult, ScreenshotInfo
+from base import RunPlaywrightFunctionResult, ScreenshotInfo
 from common import archive
 from logger import logger
 
@@ -14,7 +14,7 @@ def run_playwright(
     test_file: str,
     project: str,
     screenshot_file: str,
-) -> FunctionResult:
+) -> RunPlaywrightFunctionResult:
     logger.debug("run_playwright called")
 
     output_dir: Path = ctx.context.output_dir
@@ -32,7 +32,9 @@ def run_playwright(
     logger.debug(f"test_path: {str(test_path)}")
     if not test_path.is_file():
         err_msg = f"{test_path} not found"
-        func_result = FunctionResult(result=False, abort_flg=True, detail=err_msg)
+        func_result = RunPlaywrightFunctionResult(
+            result=False, abort_flg=True, detail=err_msg
+        )
         return func_result
 
     playwright_report_file = ctx.context.playwright_report_file
@@ -47,12 +49,14 @@ def run_playwright(
     # Editting command line
     command = ["npx", "playwright", "test"]
     command.append(str(test_path))
+    screenshot_updated = False
     if project:
         command.append(f"--project={project}")
     screenshot_path = output_dir / results_dir / screenshot_dir / screenshot_file
     logger.debug(f"screenshot_path: {screenshot_path}")
     if not screenshot_path.is_file():
         command.append("--update-snapshots")
+        screenshot_updated = True
     logger.debug(f"command: {command}")
     relative_url = f"/artifacts/results/screenshot/{screenshot_file}"
     logger.debug(f"relative_url: {relative_url}")
@@ -90,14 +94,14 @@ def run_playwright(
                 break
         if error_detected:
             logger.debug(f"error detectd : {error_detected}")
-            func_result = FunctionResult(
+            func_result = RunPlaywrightFunctionResult(
                 result=False, abort_flg=True, detail=error_detected
             )
             return func_result
     except Exception as e:
         err_msg = f"Error running Playwright tests: {e}"
         logger.error(err_msg)
-        func_result = FunctionResult(result=False, detail=err_msg)
+        func_result = RunPlaywrightFunctionResult(result=False, detail=err_msg)
         return func_result
 
     process.wait()
@@ -129,13 +133,15 @@ def run_playwright(
             )
         except Exception as e:
             logger.error(f"Faild backup: {e}")
-            func_result = FunctionResult(result=False, detail=err_msg)
+            func_result = RunPlaywrightFunctionResult(result=False, detail=err_msg)
             return func_result
 
     # Return
     if return_code != 0:
-        func_result = FunctionResult(result=False, detail=err_msg)
+        func_result = RunPlaywrightFunctionResult(result=False, detail=err_msg)
         return func_result
     logger.debug("run_playwright return")
-    func_result = FunctionResult(result=True)
+    func_result = RunPlaywrightFunctionResult(
+        result=True, screenshot_updated=screenshot_updated
+    )
     return func_result
