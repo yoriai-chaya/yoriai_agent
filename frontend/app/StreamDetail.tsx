@@ -233,13 +233,19 @@ const StreamDetail = ({ status, responseInfo }: StreamDetailProps) => {
                       {updated ? "true" : "false"}
                     </div>
                   </div>
-                  <Image
-                    src={api_url}
-                    alt={filename}
-                    width={300}
-                    height={300}
-                    className="mt-1 border rounded max-w-full"
-                  />
+                  <a
+                    href={api_url}
+                    target="_blank"
+                    className="inline-block mt-1"
+                  >
+                    <Image
+                      src={api_url}
+                      alt={filename}
+                      width={300}
+                      height={300}
+                      className="mt-1 border rounded max-w-full"
+                    />
+                  </a>
                 </div>
               );
             }

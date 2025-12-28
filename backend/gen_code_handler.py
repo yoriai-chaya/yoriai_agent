@@ -9,12 +9,15 @@ Notes:
     Keep this error message within 20 characters.
 """
 
+import asyncio
 import json
+from pathlib import Path
 from typing import AsyncIterator, Awaitable, Callable
 
 from agents.exceptions import AgentsException, ModelBehaviorError
 
 from base import (
+    CodeGenResponse,
     DebugMode,
     DonePayload,
     DoneStatus,
@@ -74,16 +77,17 @@ async def handle_gen_code(
 
         # Code Gen Loop
         debug_mode = DebugMode.CONTINUE
+        next_prompt = prompt
         for i in range(settings.code_gen_retry):
             logger.debug(f"Code Gen Loop [{i}]")
 
             # -------------------------------
             # 1. Create Code (prepare prompt)
             # -------------------------------
-            final_prompt = prompt
+            final_prompt = next_prompt
             add_prompts_len = len(context.add_prompts)
             logger.debug(
-                f"[Prompt] Base prompt len={len(prompt)}, number of additional prompts={add_prompts_len}"
+                f"[Prompt] Base prompt len={len(final_prompt)}, number of additional prompts={add_prompts_len}"
             )
             if not add_prompts_len == 0:
                 logger.debug("[Prompt] Extending prompt with additional messages")
@@ -112,6 +116,7 @@ async def handle_gen_code(
             try:
                 if not debug_mode == DebugMode.SKIP_AGENT:
                     logger.debug("[gen_code] Call gen_code()")
+                    logger.debug(f"final_prompt: {final_prompt}")
                     async for line in gen_code(
                         request=PromptRequest(prompt=final_prompt), context=context
                     ):
@@ -194,6 +199,31 @@ async def handle_gen_code(
                 logger.debug("[CP3] Waiting for input from the console")
                 debug_mode = await wait_for_console_input()
                 logger.debug(f"[CP3] Entered debug_mode: {debug_mode}")
+
+                if debug_mode == DebugMode.LOAD_CODE:
+                    loop = asyncio.get_event_loop()
+                    src_file = await loop.run_in_executor(
+                        None, input, "Enter source filename to load: "
+                    )
+                    src_path = Path(src_file).expanduser()
+                    dst_file = await loop.run_in_executor(
+                        None, input, "Enter destination filename to save: "
+                    )
+                    dst_path = Path(dst_file).expanduser()
+                    try:
+                        content = src_path.read_text(encoding="utf-8")
+                        logger.debug(f"[CP3] Loaded source code from {src_path}")
+                        dst_path.write_text(content, encoding="utf-8")
+                        logger.debug(f"[CP3] Saved source code to {dst_path}")
+                        context.response = CodeGenResponse(
+                            result=True,
+                            detail="saved successfully (debug)",
+                            code=content,
+                        )
+                    except Exception as e:
+                        logger.error(f"[CP3] Exception as {e}")
+                        break
+
                 if debug_mode == DebugMode.END:
                     logger.debug("[CP3] Exiting loop")
                     break
@@ -237,8 +267,27 @@ async def handle_gen_code(
                             EventType.CHECK_RESULT, build_check_payload
                         )
                         logger.debug("[run_build] call create_prompt_for_builderror()")
-                        re_prompt = create_prompt_for_builderror()
+                        if context.response is None:
+                            logger.error(
+                                "context.response is None at build error handling"
+                            )
+                            final_payload = DonePayload(
+                                status=DoneStatus.FAILED,
+                                message="Internal error occurred",
+                            )
+                            break
+                        if build_result.detail is None:
+                            logger.error("build_result.detail is None")
+                            final_payload = DonePayload(
+                                status=DoneStatus.FAILED,
+                                message="Internal error occurred",
+                            )
+                            break
+                        re_prompt = create_prompt_for_builderror(
+                            context.response.code, build_result.detail
+                        )
                         logger.debug(f"[run_build] re_prompt: {re_prompt}")
+                        next_prompt = re_prompt
                 else:
                     build_check_payload = {
                         "checker": "Build",

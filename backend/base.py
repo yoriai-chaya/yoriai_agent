@@ -43,6 +43,7 @@ class DebugMode(StrEnum):
     CONTINUE = "c"
     SKIP_AGENT = "s"
     END = "e"
+    LOAD_CODE = "l"
 
 
 class IsCodeCheckError(StrEnum):

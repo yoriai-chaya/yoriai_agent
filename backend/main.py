@@ -89,7 +89,7 @@ async def create_session(request: PromptRequest):
 # for Debug
 async def wait_for_console_input() -> DebugMode:
     loop = asyncio.get_event_loop()
-    prompt = 'Enter cmd - "e":end, "s":skip agent, "c": continue: '
+    prompt = 'Enter cmd - "e":end, "s":skip agent, "c": continue, "l": load code : '
     user_input = await loop.run_in_executor(None, input, prompt)
     cmd = user_input.strip().lower()
     for mode in DebugMode:
