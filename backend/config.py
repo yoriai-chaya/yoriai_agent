@@ -23,6 +23,7 @@ class Settings(BaseSettings):
     archive_dir: Path = Path("archive")
     build_customconfig_file: str = "build.customconfig.json"
     agents_prompt_file: str = "agents.yml"
+    prompts_dir: Path = Path("prompts")
 
     model_config = SettingsConfigDict(
         env_file=os.path.join(os.path.dirname(__file__), ".env")

@@ -1,7 +1,8 @@
 import asyncio
 import json
 from datetime import datetime
-from typing import Dict
+from pathlib import Path
+from typing import Dict, List
 from uuid import uuid4
 
 from fastapi import FastAPI, HTTPException
@@ -20,7 +21,9 @@ from base import (
     StartedPayload,
     StartedStatus,
     SystemError,
+    TreeNode,
 )
+from build_tree import build_tree
 from config import get_settings
 from context_factory import create_local_context
 from gen_code_handler import handle_gen_code
@@ -28,6 +31,8 @@ from logger import logger
 from place_files_handler import handle_place_files
 from prompt_parser import extract_from_prompt, parse_build_check, resolve_placeholders
 from run_tests_handler import handler_run_tests
+
+DIR_USER = "user"
 
 
 async def sse_event(event_name: str, payload: dict) -> str:
@@ -222,3 +227,28 @@ def get_screenshot(filename: str):
     if not path.exists():
         raise HTTPException(404)
     return FileResponse(path, media_type="image/png")
+
+
+@app.get(
+    "/autorun/filelist", response_model=List[TreeNode], summary="Get AutoRun file list"
+)
+def get_autorun_filelist(autorun_id: str):
+    logger.debug(f"get_autorun_filelist autorun_id: {autorun_id}")
+
+    project_root = Path.cwd()
+    target_dir = project_root / settings.prompts_dir / DIR_USER / autorun_id
+
+    if not target_dir.exists() or not target_dir.is_dir():
+        not_found_message = (
+            f"Specified AutoRun-ID directory does not exist. dir={target_dir}"
+        )
+        logger.warning(not_found_message)
+        raise HTTPException(status_code=404, detail=not_found_message)
+    try:
+        return build_tree(target_dir, current_depth=1)
+    except HTTPException as e:
+        logger.warning(f"HTTPException : {str(e)}")
+        raise
+    except Exception as e:
+        logger.error(f"Unexpected internal error e:{e}")
+        raise HTTPException(status_code=500, detail=str(e)) from e

@@ -1,6 +1,6 @@
 from enum import StrEnum
 from pathlib import Path
-from typing import Any, List
+from typing import Any, List, Literal, Union
 
 from pydantic import BaseModel
 
@@ -209,3 +209,26 @@ class TestScreenshotPayload(BaseModel):
     filename: str
     url: str
     updated: bool = False
+
+
+class AutoRunFilelist(BaseModel):
+    name: str
+    content: str
+    mtime: str  # ISO8601
+
+
+class DirectoryNode(BaseModel):
+    type: Literal["directory"]
+    name: str
+    children: List["TreeNode"]
+
+
+class FileNode(BaseModel):
+    type: Literal["file"]
+    name: str
+    data: AutoRunFilelist
+
+
+TreeNode = Union[DirectoryNode, FileNode]
+
+DirectoryNode.model_rebuild()

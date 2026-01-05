@@ -8,7 +8,7 @@ from base import LocalContext
 from config import get_settings
 from logger import logger
 
-DIR_PROMPTS = "prompts"
+DIR_AGENTS = "agents"
 
 
 def resolve_placeholders(prompt: str, context: LocalContext) -> str:
@@ -92,8 +92,10 @@ def load_agents_prompt() -> dict:
     settings = get_settings()
     agents_prompt_file = settings.agents_prompt_file
     base = Path().resolve()
+    prompts_dir = settings.prompts_dir
+    logger.debug(f"prompts_dir: {prompts_dir}")
     logger.debug(f"base: {base}")
-    path = base / DIR_PROMPTS / agents_prompt_file
+    path = base / prompts_dir / DIR_AGENTS / agents_prompt_file
     logger.debug(f"path: {path}")
 
     try:
