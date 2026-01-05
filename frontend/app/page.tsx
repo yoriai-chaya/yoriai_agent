@@ -76,7 +76,7 @@ export default function App() {
         <ScrollArea className="w-3/15 p-4 border-r space-y-4">
           <div>
             <p>Auto Mode Panel</p>
-            <AutoBlock dispatch={dispatch} setFileInfo={setFileInfo} />
+            <AutoBlock />
           </div>
         </ScrollArea>
         {/* Left-Panel */}

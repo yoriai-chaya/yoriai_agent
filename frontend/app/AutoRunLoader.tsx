@@ -13,6 +13,7 @@ interface AutoRunLoaderProps {
 
 const AutoRunLoader: React.FC<AutoRunLoaderProps> = ({ tree, setTree }) => {
   const [autorunId, setAutorunId] = useState("");
+  const [inputAutorunId, setInputAutorunId] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [errorDetail, setErrorDetail] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -37,7 +38,7 @@ const AutoRunLoader: React.FC<AutoRunLoaderProps> = ({ tree, setTree }) => {
 
     try {
       const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
-      const params = new URLSearchParams({ autorun_id: autorunId });
+      const params = new URLSearchParams({ autorun_id: inputAutorunId });
       const res = await fetch(
         `${API_BASE}/autorun/filelist?${params.toString()}`,
         {
@@ -53,6 +54,7 @@ const AutoRunLoader: React.FC<AutoRunLoaderProps> = ({ tree, setTree }) => {
       const data: TreeNode[] = await res.json();
       console.log("TreeNode data: ", data);
       setTree(data);
+      setAutorunId(inputAutorunId);
     } catch (e) {
       setError("Network Error");
       setErrorDetail(String(e));
@@ -61,7 +63,7 @@ const AutoRunLoader: React.FC<AutoRunLoaderProps> = ({ tree, setTree }) => {
     }
   };
 
-  const isLoadDisabled = loading || autorunId.trim().length === 0;
+  const isLoadDisabled = loading || inputAutorunId.trim().length === 0;
 
   return (
     <div className="flex flex-col">
@@ -69,8 +71,8 @@ const AutoRunLoader: React.FC<AutoRunLoaderProps> = ({ tree, setTree }) => {
       <Input
         id="autorun-id"
         placeholder="dir, dir/subdir"
-        value={autorunId}
-        onChange={(e) => setAutorunId(e.target.value)}
+        value={inputAutorunId}
+        onChange={(e) => setInputAutorunId(e.target.value)}
         className="border-0 border-b rounded-none focus-visible:ring-0 h-6 mt-1"
       />
       <Button

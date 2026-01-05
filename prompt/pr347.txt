@@ -1,0 +1,1148 @@
+
+
+[Question]
+Next.js, TailwindCSS, Shadcn/ui, TypeScriptを用いてフロントエンド
+アプリケーションを開発しています。
+
+下記に現状のプログラム
+- page.tsx
+- QA.tsx
+- useSSEPrompt.ts
+- types.ts
+を示します。
+
+以下の観点で現状のプログラムを解析し、処理概要を説明し、プログラム改修の方針を整理してください。
+
+## 観点
+- 現状のプログラムは、指定したローカルファイル（テキストファイル）を読み込み、これをプロンプト文として、バックエンドAPIサーバに送信する処理を行っている。
+- バックエンドAPIサーバからは、プロンプト文をLLMに投げて各種エージェント処理を行い、その結果はStreamingデータ(SSE)でフロントエンド側に送られてくる。このメッセージを適宜ブラウザに表示している。
+- 現状は、<QA>コンポーネントでuseSSEPrompt.tsで定義しているsendPrompt()関数でAPIサーバに送信している。
+- この処理を今後は、新たに作成する別のコンポーネントからもプロンプト文を送信するために、sendPrompt()関数を用いたいと思っている。
+- 今回はこのsendPrompt()関数を別のコンポーネントから呼び出すことが可能であるか、また、その際の処理条件を見極めたい。
+
+プログラム解析にあたり、不足する情報があれば質問してください。
+
+## 現状のプログラム(page.tsx)
+"use client";
+import { useEffect, useReducer, useState, useRef } from "react";
+import { Separator } from "@/components/ui/separator";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import FileUploader from "./FileUploader";
+import QA from "./QA";
+import ShowPrompt from "./ShowPrompt";
+import StreamDetail from "./StreamDetail";
+import Header from "./Header";
+import { State, FileInfo, ResponseInfo, Mode } from "./types";
+import { reducer } from "./reducer";
+import AutoBlock from "./AutoBlock";
+
+const initialState: State = {
+  steps: [{ status: "Unloaded" }],
+};
+const initialFileInfo: FileInfo[] = [
+  { filename: "", content: "", mtime: new Date(0) },
+];
+const initialResponseInfo: ResponseInfo[] = [];
+
+export default function App() {
+  const [state, dispatch] = useReducer(reducer, initialState);
+  const [fileInfo, setFileInfo] = useState<FileInfo[]>(initialFileInfo);
+  const [responseInfo, setResponseInfo] =
+    useState<ResponseInfo[]>(initialResponseInfo);
+  const [mode, setMode] = useState<Mode>("Manual");
+  useEffect(() => {
+    console.log("fileInfo updated: ", fileInfo);
+    scrollRightPanel();
+  }, [fileInfo]);
+  useEffect(() => {
+    console.log("state updated: ", state);
+    scrollLeftPanel();
+  }, [state]);
+  useEffect(() => {
+    console.log("responseInfo updated: ", responseInfo);
+    scrollLeftPanel();
+    scrollRightPanel();
+  }, [responseInfo]);
+  useEffect(() => {
+    setFileInfo((prev) => {
+      if (prev.length >= state.steps.length) return prev;
+      return [...prev, { filename: "", content: "", mtime: new Date(0) }];
+    });
+  }, [state.steps.length]);
+
+  const rightPanel = useRef<HTMLDivElement>(null);
+  const leftPanel = useRef<HTMLDivElement>(null);
+
+  const scrollRightPanel = () => {
+    if (rightPanel.current) {
+      rightPanel.current.scrollIntoView({
+        behavior: "smooth",
+        block: "end",
+      });
+    }
+  };
+  const scrollLeftPanel = () => {
+    if (leftPanel.current) {
+      leftPanel.current.scrollIntoView({
+        behavior: "smooth",
+        block: "end",
+      });
+    }
+  };
+
+  return (
+    <div className="flex flex-col h-screen overflow-hidden">
+      {/* Header */}
+      <Header mode={mode} setMode={setMode} />
+
+      {/* Main Area */}
+      <div className="flex flex-1 overflow-hidden">
+        {/* Side-Panel */}
+        <ScrollArea className="w-3/15 p-4 border-r space-y-4">
+          <div>
+            <p>Auto Mode Panel</p>
+            <AutoBlock />
+          </div>
+        </ScrollArea>
+        {/* Left-Panel */}
+        <ScrollArea className="w-6/15 p-4 border-r space-y-4">
+          <div ref={leftPanel}>
+            {state.steps.map((step, index) => (
+              <div key={index}>
+                <p className="text-app-step my-2">
+                  Step {index} - Status: {step.status}
+                </p>
+                <FileUploader
+                  index={index}
+                  status={step.status}
+                  dispatch={dispatch}
+                  setFileInfo={setFileInfo}
+                />
+                <QA
+                  index={index}
+                  status={step.status}
+                  dispatch={dispatch}
+                  fileInfo={fileInfo[index]}
+                  setResponseInfo={setResponseInfo}
+                  responseInfo={responseInfo[index]}
+                />
+                <Separator />
+              </div>
+            ))}
+          </div>
+        </ScrollArea>
+        {/* Right-Panel */}
+        <ScrollArea className="w-6/15 p-4 border-r space-y-4">
+          <div ref={rightPanel}>
+            {state.steps.map((step, index) => (
+              <div key={index}>
+                <p className="text-app-step my-2">
+                  Step {index} - Status: {step.status}
+                </p>
+                <ShowPrompt
+                  index={index}
+                  status={step.status}
+                  fileInfo={fileInfo}
+                />
+                <StreamDetail
+                  status={step.status}
+                  responseInfo={responseInfo[index]}
+                />
+              </div>
+            ))}
+          </div>
+        </ScrollArea>
+      </div>
+    </div>
+  );
+}
+
+## 現状のプログラム(QA.tsx)
+"use client";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
+import { SendHorizontal } from "lucide-react";
+import StreamEvent from "./StreamEvent";
+import { Action, FileInfo } from "./types";
+import { ResponseInfo } from "./types";
+import { formatDateTime } from "./util";
+import { useState } from "react";
+import { useSSEPrompt } from "./useSSEPrompt";
+
+interface QAProps {
+  status: string;
+  index: number;
+  dispatch: React.Dispatch<Action>;
+  fileInfo: FileInfo;
+  setResponseInfo: React.Dispatch<React.SetStateAction<ResponseInfo[]>>;
+  responseInfo: ResponseInfo;
+}
+
+const QA = ({
+  status,
+  index,
+  dispatch,
+  fileInfo,
+  setResponseInfo,
+  responseInfo,
+}: QAProps) => {
+  const [errorMessage, setErrorMessage] = useState<string>("");
+  const { sendPrompt } = useSSEPrompt({ dispatch, setResponseInfo });
+
+  const handleSend = async () => {
+    try {
+      setErrorMessage("");
+      await sendPrompt(fileInfo, index);
+    } catch (err) {
+      if (err instanceof Error) {
+        setErrorMessage(err.message);
+      } else {
+        setErrorMessage(String(err));
+      }
+    }
+  };
+
+  return (
+    <div className="space-y-2 mb-4">
+      {(status === "Loaded" || status === "Sended" || status === "Done") && (
+        <div className="grid grid-cols-6 items-center">
+          {/* --- filename row --- */}
+          {/* column-A */}
+          <div></div>
+          {/* column-B */}
+          <div className="text-gray-500 text-app-label">fname:</div>
+          {/* column-C,D,E */}
+          <div className="col-span-3 text-app-info">{fileInfo.filename}</div>
+          {/* column-F */}
+          <div className="col-span-1 row-span-2">
+            <Button
+              onClick={handleSend}
+              disabled={status === "Sended" || status === "Done"}
+              variant="ghost"
+            >
+              <SendHorizontal className="w-4 h-4 mr-2 text-ctm-blue-500" />
+            </Button>
+          </div>
+          {/* --- mtime row --- */}
+          {/* column-A */}
+          <div></div>
+          {/* column-B */}
+          <div className="text-gray-500 text-app-label">mtime:</div>
+          {/* column-C,D,E */}
+          <div className="col-span-3 text-app-time text-gray-700">
+            {formatDateTime(fileInfo.mtime)}
+          </div>
+          {/* column-F */}
+          <div></div>
+
+          {/* --- error message row --- */}
+          {/* column-A */}
+          <div></div>
+          {/* column-B,C,D,E */}
+          <div className="col-span-4 text-app-info">
+            {errorMessage && (
+              <div className="text-red-500 mt-2">{errorMessage}</div>
+            )}
+          </div>
+          {/* column-F */}
+          <div></div>
+        </div>
+      )}
+      {(status === "Sended" || status === "Done") && (
+        <div className="grid grid-cols-6 items-center">
+          {/* --- avatar row --- */}
+          {/* column-A */}
+          <div>
+            <Avatar className="bg-yellow-100">
+              <AvatarImage src="/assistant.png" />
+              <AvatarFallback>As</AvatarFallback>
+            </Avatar>
+          </div>
+          {/* column-B */}
+          <span className="text-app-avatar">Assistant</span>
+          {/* column-C,D,E,F */}
+          <div className="col-span-4"></div>
+
+          {/* --- StreamEvent rows --- */}
+          <div className="col-span-6">
+            <StreamEvent status={status} responseInfo={responseInfo} />
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default QA;
+
+## 現状のプログラム(useSSEPrompt.tsx)
+"use client";
+import { useRef, useCallback } from "react";
+import {
+  Action,
+  FileInfo,
+  PromptRequest,
+  ResponseInfo,
+  StreamResponse,
+  EventTypes,
+} from "./types";
+
+interface UseSSEPromptProps {
+  dispatch: React.Dispatch<Action>;
+  setResponseInfo: React.Dispatch<React.SetStateAction<ResponseInfo[]>>;
+}
+
+export const useSSEPrompt = ({
+  dispatch,
+  setResponseInfo,
+}: UseSSEPromptProps) => {
+  const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
+  const esRef = useRef<EventSource | null>(null);
+
+  // setEvent
+  const setEvent = useCallback(
+    (sres: StreamResponse, index: number) => {
+      console.log("setEvent called");
+      setResponseInfo((prev) => {
+        const updated = [...prev];
+        const prevEvents = updated[index]?.r_event ?? [];
+        updated[index] = {
+          r_event: [...prevEvents, { s_res: sres, r_time: new Date() }],
+        };
+        return updated;
+      });
+    },
+    [setResponseInfo]
+  );
+
+  // handleGenericEvent
+  const handleGenericEvent = useCallback(
+    (
+      type: (typeof EventTypes)[keyof typeof EventTypes],
+      e: Event,
+      index: number
+    ) => {
+      console.log(`- ${type} event -`);
+      const data = JSON.parse((e as MessageEvent).data);
+      console.log(`data: ${JSON.stringify(data, null, 2)}`);
+      const sres: StreamResponse = {
+        event: type as StreamResponse["event"],
+        payload: data,
+      };
+      setEvent(sres, index);
+    },
+    [setEvent]
+  );
+
+  // sendPrompt
+  const sendPrompt = useCallback(
+    async (fileInfo: FileInfo, index: number) => {
+      console.log("sendPrompt called");
+      if (esRef.current) {
+        // Prevent duplicate
+        console.log("prevent duplicate");
+        esRef.current.close();
+        esRef.current = null;
+      }
+
+      try {
+        // Create Session
+        const requestBody: PromptRequest = { prompt: fileInfo.content };
+        const res = await fetch(`${API_BASE}/main`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(requestBody),
+        });
+        if (!res.ok) throw new Error(`create session failed: ${res.status}`);
+
+        const { session_id } = await res.json();
+        if (!session_id) throw new Error("no session_id");
+        console.log(`session_id: ${session_id}`);
+
+        // Starting subscribing to SSE
+        const url = `${API_BASE}/main/stream/${session_id}`;
+        console.log("new EventSource");
+        const es = new EventSource(url, { withCredentials: false });
+        console.log(`es : ${es}`);
+
+        // Listen "started" (special handling)
+        es.addEventListener(EventTypes.STARTED, (e) => {
+          console.log("- started event -");
+          const data = JSON.parse((e as MessageEvent).data);
+          console.log(`data: ${JSON.stringify(data, null, 2)}`);
+          console.log("dispatch send_prompt");
+          dispatch({ type: "SEND_PROMPT", index });
+          const sres: StreamResponse = {
+            event: EventTypes.STARTED,
+            payload: data,
+          };
+          setResponseInfo((prev) => {
+            const updated = [...prev];
+            updated[index] = {
+              r_event: [
+                {
+                  s_res: sres,
+                  r_time: new Date(),
+                },
+              ],
+            };
+            return updated;
+          });
+        });
+
+        // Listen "done" (special handling)
+        es.addEventListener(EventTypes.DONE, (e) => {
+          console.log("- done event -");
+          const data = JSON.parse((e as MessageEvent).data);
+          console.log(`data: ${JSON.stringify(data, null, 2)}`);
+          const sres: StreamResponse = {
+            event: EventTypes.DONE,
+            payload: data,
+          };
+          setEvent(sres, index);
+
+          es.close();
+          esRef.current = null;
+          console.log("dispatch done");
+          dispatch({ type: "DONE", index });
+        });
+
+        // Other events (common handling)
+        const commonEventTypes = Object.values(EventTypes).filter(
+          (type) => type !== EventTypes.STARTED && type !== EventTypes.DONE
+        );
+        commonEventTypes.forEach((type) => {
+          es.addEventListener(type, (e) => handleGenericEvent(type, e, index));
+        });
+      } catch (error) {
+        console.log("Error sending: ", error);
+        let message = "Failed to connect to server";
+        if (error instanceof TypeError && error.message === "Failed to fetch") {
+          message = "Could not connect to backend server";
+        } else if (error instanceof Error) {
+          message = error.message;
+        }
+        return Promise.reject(message);
+      }
+    },
+    [API_BASE, dispatch, handleGenericEvent, setEvent, setResponseInfo]
+  );
+
+  return { sendPrompt };
+};
+
+## 現状のプログラム(types.ts)
+export type ChatStep = { status: "Unloaded" | "Loaded" | "Sended" | "Done" };
+export type State = { steps: ChatStep[] };
+export type Action =
+  | { type: "LOAD_FILE"; index: number }
+  | { type: "SEND_PROMPT"; index: number }
+  | { type: "DONE"; index: number };
+export type FileInfo = {
+  filename: string;
+  content: string;
+  mtime: Date;
+};
+export type PromptRequest = {
+  prompt: string;
+};
+export type PromptResponse = {
+  prompt: string;
+};
+
+export type CheckResultPayload = {
+  checker: string;
+  result: boolean;
+  rule_id: string;
+  detail: string;
+};
+
+export type TestResultSpec = {
+  title: string;
+  result: boolean;
+  error_summary: string | null;
+  error_message: string | null;
+  error_stack: string | null;
+};
+
+export type TestResultPayload = {
+  name: string;
+  file: string;
+  result: boolean;
+  detail: string;
+  total: number;
+  ok: number;
+  ng: number;
+  specs: TestResultSpec[];
+};
+
+export type TestScreenshotPayload = {
+  spec: string;
+  filename: string;
+  url: string;
+  updated: boolean;
+};
+
+export type StreamResponse =
+  | {
+      event: "started";
+      payload: { status: string; message: string; step_id: string };
+    }
+  | {
+      event: "code";
+      payload: { language: string; code: string; file_path: string };
+    }
+  | { event: "agent_update"; payload: { agent_name: string } }
+  | { event: "done"; payload: { status: string; message: string } }
+  | { event: "check_result"; payload: CheckResultPayload }
+  | { event: "system_error"; payload: { error: string; detail: string } }
+  | {
+      event: "agent_result";
+      payload: { result: boolean; error_detail: string };
+    }
+  | { event: "test_result"; payload: TestResultPayload }
+  | { event: "test_screenshot"; payload: TestScreenshotPayload };
+
+export type ResponseEvent = {
+  s_res: StreamResponse;
+  r_time: Date;
+};
+
+export type ResponseInfo = {
+  r_event: ResponseEvent[];
+};
+
+export const EventTypes = {
+  STARTED: "started",
+  CODE: "code",
+  AGENT_UPDATE: "agent_update",
+  DONE: "done",
+  CHECK_RESULT: "check_result",
+  SYSTEM_ERROR: "system_error",
+  AGENT_RESULT: "agent_result",
+  TEST_RUN: "test_run",
+  TEST_RESULT: "test_result",
+  TEST_SCREENSHOT: "test_screenshot",
+} as const;
+
+export type CheckResultEvent = {
+  event: "check_result";
+  payload: CheckResultPayload;
+};
+
+export type CheckResultItem = {
+  s_res: CheckResultEvent;
+  r_time: Date;
+};
+
+export type Mode = "Manual" | "Auto";
+
+export type AutoRunFilelist = {
+  name: string;
+  content: string;
+  mtime: string; // ISO8601
+};
+
+export type FileNode = {
+  type: "file";
+  name: string;
+  data: AutoRunFilelist;
+};
+export type DirectoryNode = {
+  type: "directory";
+  name: string;
+  children: TreeNode[];
+};
+export type TreeNode = FileNode | DirectoryNode;
+
+export enum Emoji {
+  WHITE_CIRCLE = "\u26AA", // ⚪
+  RED_CIRCLE = "\u{1F534}", // 🔴
+  BLUE_CIRCLE = "\u{1F535}", // 🔵
+  GREEN_CIRCLE = "\u{1F7E2}", // 🟢
+}
+
+export enum ResponseStatus {
+  COMPLETED = "Completed",
+  FAILED = "Failed",
+}
+
+[Answer]
+1. 全体アーキテクチャと処理概要
+1.1 画面構成（page.tsx）
+
+page.tsx は アプリ全体のオーケストレーター です。
+
+管理している主な状態
+| state                | 役割                                                 |
+| -------------------- | -------------------------------------------------- |
+| `state (useReducer)` | 各 Step の進行状態（Unloaded / Loaded / Sended / Done）    |
+| `fileInfo[]`         | 各 Step に対応するローカルファイル情報（filename / content / mtime） |
+| `responseInfo[]`     | 各 Step に対応する SSE ストリーミング結果                         |
+| `mode`               | Manual / Auto の UI モード                             |
+
+重要な設計ポイント
+- Step index をキーにすべての状態が紐づく
+  - steps[index]
+  - fileInfo[index]
+  - responseInfo[index]
+- Step が増えたら fileInfo も自動で拡張される設計
+- 実際の処理（ファイルロード・送信・SSE受信）は 子コンポーネントに委譲
+
+1.2 ファイル読み込み〜送信の流れ（俯瞰）
+FileUploader
+  ↓（fileInfo[index] 更新 + dispatch LOAD_FILE）
+QA
+  ↓ sendPrompt()
+useSSEPrompt
+  ↓ POST /main
+  ↓ GET /main/stream/{session_id} (SSE)
+  ↓ responseInfo[index] にイベント蓄積
+StreamEvent / StreamDetail
+  ↓ 表示
+
+2. QA.tsx の役割
+QA.tsx は 「この Step のプロンプトを送信する UI + 結果表示」 を担っています。
+
+責務
+- Send ボタンの制御
+- useSSEPrompt を使った送信トリガー
+- エラーメッセージ表示
+- ストリーミング結果（Assistant 発話）の表示
+
+sendPrompt の呼び出し条件
+const { sendPrompt } = useSSEPrompt({ dispatch, setResponseInfo });
+await sendPrompt(fileInfo, index);
+
+ここで重要なのは：
+- sendPrompt は fileInfo と index に完全に依存
+- UI コンポーネント自体は SSE の詳細を知らない
+👉 QA は「送信の入口」にすぎず、ロジックは hook に集約されている
+
+3. useSSEPrompt.ts の詳細解析
+3.1 useSSEPrompt の正体
+useSSEPrompt は以下をまとめた SSE専用のロジック hook です。
+- セッション生成（POST）
+- EventSource の生成と管理
+- SSEイベントの振り分け
+- dispatch と setResponseInfo の更新
+
+内部状態
+const esRef = useRef<EventSource | null>(null);
+👉 1 hook = 1 SSE接続 という設計
+
+3.2 sendPrompt の処理フロー
+① 重複防止
+if (esRef.current) {
+  esRef.current.close();
+  esRef.current = null;
+}
+同一 hook インスタンス内では 多重接続不可
+
+② セッション作成（HTTP）
+POST /main
+{ prompt: fileInfo.content }
+- ローカルファイルの 中身のみ を送信
+- filename や mtime は送っていない（UI用途）
+
+③ SSE 接続開始
+GET /main/stream/{session_id}
+
+④ SSEイベント処理
+started（特別扱い）
+- dispatch({ type: "SEND_PROMPT", index })
+- responseInfo[index] を初期化
+
+done（特別扱い）
+- 最終イベント追加
+- dispatch({ type: "DONE", index })
+- SSE 切断
+
+その他イベント（共通）
+- handleGenericEvent → setEvent
+- responseInfo[index].r_event[] に append
+
+3.3 useSSEPrompt が要求する「外部依存」
+sendPrompt() を呼ぶために 必須なもの
+
+| 依存                 | 理由                            |
+| ------------------ | ----------------------------- |
+| `dispatch`         | Step 状態管理（SEND_PROMPT / DONE） |
+| `setResponseInfo`  | SSEイベントの蓄積                    |
+| `index`            | Step / response の対応付け         |
+| `fileInfo.content` | プロンプト本文                       |
+
+4. types.ts から見える設計思想
+明確なポイント
+- SSEイベントは union type で厳密に定義
+- EventTypes は SSE event 名と 1:1 対応
+- ResponseInfo は「イベントの時系列ログ」
+
+ResponseInfo = {
+  r_event: { s_res, r_time }[]
+}
+
+👉 UIは「状態」ではなく「履歴」を描画している
+
+5. sendPrompt() を「別コンポーネントから使えるか？」
+結論（重要）
+
+✅ 技術的には可能
+❗ ただし、条件付き
+
+5.1 呼び出し可能な理由
+- sendPrompt は UIに依存していない
+- 必要なのは以下だけ：
+useSSEPrompt({
+  dispatch,
+  setResponseInfo,
+});
+👉 QA 専用ではない、汎用 hook
+
+5.2 呼び出すための必須条件（整理）
+
+新しいコンポーネントから sendPrompt を使うには、以下が揃っている必要があります。
+
+① Step管理（dispatch）
+- SEND_PROMPT
+- DONE
+を処理できる reducer が存在すること
+👉 page.tsx の reducer を 共有 or 上位で管理 する必要あり
+
+② responseInfo の管理
+- ResponseInfo[]
+- setResponseInfo
+👉 responseInfo を QA専用 state にしていると再利用不可
+
+③ index の意味が定義されていること
+- index は responseInfo / steps / fileInfo の共通キー
+👉 Autoモードなどでは：
+- 仮想 Step
+- 固定 index（例: 0）
+- 独立した state 管理
+のどれかを選ぶ必要あり
+
+④ SSE 接続のライフサイクル設計
+- 同一 hook インスタンス内では 同時に1接続
+- 複数並列実行したい場合：
+  - hook を 複数インスタンス化
+  - or hook を class / service 化
+
+6. 改修方針の整理（今後の拡張を見据えて）
+方針① sendPrompt を「UI非依存の中核API」に位置付ける
+- QA / Auto / Batch 実行で共通利用
+- 呼び出し側は：
+  - prompt
+  - step index
+  - 表示方法
+だけを制御
+
+方針② State を上位に集約
+page.tsx
+ ├─ state (steps)
+ ├─ fileInfo
+ ├─ responseInfo
+ └─ useSSEPrompt
+
+👉 新コンポーネントも 同じ state を使う
+
+方針③ 将来の分離案（中〜長期）
+- useSSEPrompt
+  → SSEClient（純ロジック）
+- React hook は 薄いラッパー
+
+これにより：
+- 並列送信
+- AutoRun
+- テスト容易性
+が向上
+
+7. 不足情報として確認したい点（必要最小限）
+
+以下は 設計判断に影響するため確認したいポイント です。
+1.新たに作成予定のコンポーネントは
+  - 既存 Step と 同じ steps / responseInfo を使う 想定ですか？
+  - それとも 独立した実行単位 ですか？
+
+2.同時に複数プロンプトを 並列送信 する可能性はありますか？
+
+この2点が分かれば、
+「hook再利用」か「SSEクライアント分離」か を明確に提案できます。
+
+[Question-2]
+1.新たに作成予定のコンポーネントについて
+現在開発中で途中まで作成が完了しています。
+page.tsxで定義している<AutoBlock>コンポーネントから、<AutoRunLoader>コンポーネントで、APIサーバからプロンプトファイルのリストを受信し、<TreeView>コンポーネントで解析し、setTree(data)で保持しています。
+現状はAutoRunLoaderの上位のAutoBlockでtreeデータを保持していますが、これを最上位のpage.tsxに持たせれば良いのではないかと考えています。
+
+このtreeデータで保持しているプロンプト文を、「実行」ボタン（これから追加する）押下後に、データ登録順に従い、順次APIサーバに送信し、プロンプトファイルを都度ロードすることなく、自動的に順次プロンプト文を送信したいと考えています。
+
+  - 送信する際はsendPrompt関数を使いたい。なぜなら、"started"イベントと"done"イベント受信時にdispatch()処理などの状態変更処理を行っており、これらの処理は踏襲したいから。
+  - "done"イベントのデータでstatusが正常か異常かによって、次のプロンプト文を送信するか、中断するかの判断ロジックも加えたいと考えています。
+
+2.同時に複数プロンプトを 並列送信 する可能性
+上記の通り、順次送信することを考えており、並列送信は考えておりません。
+
+## AutoRunLoader.tsx
+"use client";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
+import { TreeNode } from "./types";
+import { useState } from "react";
+import TreeView from "./TreeView";
+
+interface AutoRunLoaderProps {
+  tree: TreeNode[];
+  setTree: React.Dispatch<React.SetStateAction<TreeNode[]>>;
+}
+
+const AutoRunLoader: React.FC<AutoRunLoaderProps> = ({ tree, setTree }) => {
+  const [autorunId, setAutorunId] = useState("");
+  const [inputAutorunId, setInputAutorunId] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [errorDetail, setErrorDetail] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  const buildUserMessage = (status: number): string => {
+    switch (status) {
+      case 404:
+        return "AutoRunID not found";
+      case 422:
+        return "Directory structure is too deep";
+      case 500:
+        return "Internal Error";
+      default:
+        return "Failed to load file list";
+    }
+  };
+
+  const handleLoad = async () => {
+    setLoading(true);
+    setError(null);
+    setErrorDetail(null);
+
+    try {
+      const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
+      const params = new URLSearchParams({ autorun_id: inputAutorunId });
+      const res = await fetch(
+        `${API_BASE}/autorun/filelist?${params.toString()}`,
+        {
+          method: "GET",
+        }
+      );
+      if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        setError(buildUserMessage(res.status));
+        setErrorDetail(body?.detail ?? null);
+        return;
+      }
+      const data: TreeNode[] = await res.json();
+      console.log("TreeNode data: ", data);
+      setTree(data);
+      setAutorunId(inputAutorunId);
+    } catch (e) {
+      setError("Network Error");
+      setErrorDetail(String(e));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const isLoadDisabled = loading || inputAutorunId.trim().length === 0;
+
+  return (
+    <div className="flex flex-col">
+      <Label className="mt-2">AutoRunID</Label>
+      <Input
+        id="autorun-id"
+        placeholder="dir, dir/subdir"
+        value={inputAutorunId}
+        onChange={(e) => setInputAutorunId(e.target.value)}
+        className="border-0 border-b rounded-none focus-visible:ring-0 h-6 mt-1"
+      />
+      <Button
+        size="sm"
+        onClick={handleLoad}
+        disabled={isLoadDisabled}
+        variant="ghost"
+        className="
+          shrink-0
+          text-ctm-blue-500
+          hover:text-ctm-blue-600
+          hover:bg-transparent 
+          mt-1
+        "
+      >
+        {loading ? "Loading..." : "Load"}
+      </Button>
+
+      {error && (
+        <div className="text-xs text-red-500">
+          <div>{error}</div>
+          {errorDetail && (
+            <details className="mt-1 cursor-pointer">
+              <summary className="text-xs">detail</summary>
+              <p className="text-xs">{errorDetail}</p>
+            </details>
+          )}
+        </div>
+      )}
+
+      {tree.length > 0 && (
+        <div className="mt-4 border-t pt-2">
+          <div className="font-semibold mb-1">{autorunId}</div>
+          <TreeView nodes={tree} />
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default AutoRunLoader;
+
+## TreeView.tsx
+"use client";
+import { TreeNode } from "./types";
+import { formatDateTime } from "./util";
+
+interface TreeViewProps {
+  nodes: TreeNode[];
+  depth?: number;
+}
+
+const indentClass = (depth: number) => `ml-${depth * 2}`;
+
+const TreeView: React.FC<TreeViewProps> = ({ nodes, depth = 0 }) => {
+  return (
+    <ul className="text-sm">
+      {nodes.map((node, index) => {
+        if (node.type === "directory") {
+          return (
+            <li key={`${node.name}-${index}`} className={indentClass(depth)}>
+              <div className="font-medium">- {node.name}</div>
+              <TreeView nodes={node.children} depth={depth + 1} />
+            </li>
+          );
+        }
+
+        // file
+        return (
+          <li key={`${node.name}-${index}`} className={indentClass(depth)}>
+            <div>- {node.name}</div>
+            <div className="ml-2 text-xs text-muted-foreground">
+              {formatDateTime(new Date(node.data.mtime))}
+            </div>
+          </li>
+        );
+      })}
+    </ul>
+  );
+};
+
+export default TreeView;
+
+[Answer-2]
+ありがとうございます。
+いただいた追加情報を踏まえて、現状設計の整理 → Auto実行に拡張する際の設計方針 → sendPrompt 再利用の可否と条件 → 具体的な改修方針 の順でまとめます。
+
+1. 現状設計の再整理（Manual / Auto を俯瞰）
+1.1 現在の Manual 実行モデル（QA中心）
+
+状態の軸
+- Step index がすべてのキー
+  - steps[index]
+  - fileInfo[index]
+  - responseInfo[index]
+
+実行モデル
+- 人がファイルをロード
+- 人が Send ボタンを押す
+- sendPrompt(fileInfo, index)
+- SSE "started" → dispatch(SEND_PROMPT)
+- SSE "done" → dispatch(DONE)
+👉 「1 Step = 1 プロンプト」 という強い前提がある
+
+1.2 現在の AutoRun 系の状態
+AutoRunLoader / TreeView
+- API /autorun/filelist から TreeNode 構造 を取得
+- TreeNode.data.content に プロンプト本文がすでに含まれている
+- つまり：
+  - ローカルファイルロードは不要
+  - AutoRun 用のプロンプトは「すでにメモリ上にある」
+
+2. ご提案の「tree を page.tsx に持たせる」について
+結論
+
+✅ 設計的に正しい判断
+むしろ Auto 実行を考えると 必須に近い
+理由
+① Auto は「アプリ全体の実行フロー」
+
+AutoRun は：
+- QA コンポーネント内部の処理ではない
+- 手動操作でもない
+- アプリ全体の制御ロジック
+👉 page.tsx が「司令塔」であるのが自然
+
+② tree は「次に何を実行するか」を決める状態
+
+tree は：
+- 単なる表示用データではなく
+- 実行順序・内容を規定するデータ
+これは：
+- fileInfo
+- steps
+と同じレイヤーの state
+
+③ Auto / Manual の共存が楽になる
+page.tsx
+ ├─ steps
+ ├─ fileInfo      ← Manual 用
+ ├─ responseInfo
+ ├─ tree          ← Auto 用
+ └─ mode
+
+この構造にすると：
+- Manual：fileInfo → sendPrompt
+- Auto：tree → sendPrompt
+
+と 入口だけ切り替える 形になる
+
+3. Auto 実行でやりたいことを構造化
+ご要望をロジックに落とすと、次の状態機械になります。
+
+[Idle]
+  ↓ 実行ボタン
+[Running step 0]
+  ↓ done (success)
+[Running step 1]
+  ↓ done (failure)
+[Abort]
+
+特徴
+- 必ず直列
+- "done" イベントがトリガー
+- done.payload.status によって分岐
+👉 SSE のライフサイクルと完全に一致
+
+4. sendPrompt は Auto から使えるか？
+結論（明確）
+✅ 完全に使える
+❗ ただし「呼び出し方」を少し変える必要あり
+
+なぜ使えるのか
+- sendPrompt がやっている本質は：
+  1.セッション作成
+  2.SSE 接続
+  3.started / done で dispatch
+  4.responseInfo 更新
+これらは：
+  - Manual / Auto の区別がない
+  -「プロンプト文字列」さえあれば成立
+
+Auto 用に追加で必要な条件
+条件① fileInfo を「仮想的に作る」
+
+Auto ではローカルファイルをロードしないので：
+const fileInfo: FileInfo = {
+  filename: node.name,
+  content: node.data.content,
+  mtime: new Date(node.data.mtime),
+};
+👉 sendPrompt は FileInfo の content しか使っていない
+
+条件② index を Auto 用に意味付けする
+選択肢は2つ：
+
+案A（おすすめ）
+  - Auto 実行用に 専用の steps / responseInfo を持つ
+  - index = 実行順（0, 1, 2 ...）
+
+案B
+  - Manual と同じ steps を流用
+  - Auto 開始時に steps をまとめて生成
+
+  steps = treeFiles.map(() => ({ status: "Loaded" }));
+
+条件③ done を「待ってから次を送る」
+現在の sendPrompt は：
+  - done を UI更新のイベント として扱っている
+  - 呼び出し元に結果を返さない
+👉 Auto 用には done をフックする必要がある
+
+5. Auto 実行に向けた最小改修方針（重要）
+方針の軸
+
+sendPrompt は変えない / もしくは最小限の拡張に留める
+
+5.1 Auto 実行用コントローラを作る
+イメージ
+const runAuto = async () => {
+  for (let i = 0; i < files.length; i++) {
+    await sendPrompt(fileInfo, i);
+    await waitForDone(i);
+
+    if (lastDoneStatus !== "success") break;
+  }
+};
+
+5.2 「done を待つ」方法（設計上の核心）
+方法A（おすすめ・React的）
+- responseInfo を監視する
+- "done" イベントが追加されたら resolve
+
+useEffect(() => {
+  const events = responseInfo[currentIndex]?.r_event;
+  const done = events?.find(e => e.s_res.event === "done");
+  if (done) {
+    // 次へ
+  }
+}, [responseInfo, currentIndex]);
+
+✔ sendPrompt 非改修
+✔ UI と整合的
+
+方法B（sendPrompt を Promise 化）
+
+sendPrompt を拡張：
+const sendPrompt = async (...) => {
+  return new Promise<DonePayload>((resolve, reject) => {
+    es.addEventListener("done", (e) => {
+      resolve(parsedData);
+    });
+  });
+};
+
+✔ Auto は書きやすい
+❌ Manual 側への影響を要検討
+
+5.3 status による中断判定
+if (done.payload.status !== "success") {
+  abortAutoRun();
+}
+
+このロジックは：
+- AutoBlock / page.tsx に置く
+- useSSEPrompt には入れない
+👉 「実行ポリシー」と「通信」は分離
+
+6. 推奨アーキテクチャ（まとめ）
+page.tsx
+ ├─ steps
+ ├─ responseInfo
+ ├─ tree
+ ├─ useSSEPrompt
+ ├─ QA (Manual)
+ └─ AutoBlock
+     ├─ AutoRunLoader
+     ├─ TreeView
+     └─ AutoRunner ← ★新規
+
+AutoRunner の責務
+- tree を実行順に flatten
+- index を管理
+- sendPrompt を順次呼び出し
+- done を監視
+- 成否判定・中断
+
