@@ -103,13 +103,23 @@ export type CheckResultItem = {
 
 export type Mode = "Manual" | "Auto";
 
-export type TaskYaml = {
-  task_name: string;
-  steps: {
-    title: string;
-    prompt_file: string;
-  }[];
+export type AutoRunFilelist = {
+  name: string;
+  content: string;
+  mtime: string; // ISO8601
 };
+
+export type FileNode = {
+  type: "file";
+  name: string;
+  data: AutoRunFilelist;
+};
+export type DirectoryNode = {
+  type: "directory";
+  name: string;
+  children: TreeNode[];
+};
+export type TreeNode = FileNode | DirectoryNode;
 
 export enum Emoji {
   WHITE_CIRCLE = "\u26AA", // ⚪
