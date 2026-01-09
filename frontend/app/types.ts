@@ -121,11 +121,23 @@ export type DirectoryNode = {
 };
 export type TreeNode = FileNode | DirectoryNode;
 
+export type AutoRunFileStatus =
+  | "pending"
+  | "running"
+  | "success"
+  | "failed"
+  | "skipped";
+
+export type AutoRunFileStatusMap = Record<string, AutoRunFileStatus>;
+
+export type AutoRunState = "idle" | "running" | "pause" | "finished" | "failed";
+
 export enum Emoji {
   WHITE_CIRCLE = "\u26AA", // ⚪
   RED_CIRCLE = "\u{1F534}", // 🔴
   BLUE_CIRCLE = "\u{1F535}", // 🔵
   GREEN_CIRCLE = "\u{1F7E2}", // 🟢
+  YELLOW_CIRCLE = "\u{1F7E1}", // 🟡
 }
 
 export enum ResponseStatus {

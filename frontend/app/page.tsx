@@ -78,7 +78,13 @@ export default function App() {
           {mode === "Auto" && (
             <div>
               <p>Auto Mode Panel</p>
-              <AutoBlock tree={tree} setTree={setTree} />
+              <AutoBlock
+                tree={tree}
+                setTree={setTree}
+                dispatch={dispatch}
+                setFileInfo={setFileInfo}
+                setResponseInfo={setResponseInfo}
+              />
             </div>
           )}
         </ScrollArea>
@@ -91,23 +97,21 @@ export default function App() {
                   Step {index} - Status: {step.status}
                 </p>
                 {mode === "Manual" && (
-                  <>
-                    <FileUploader
-                      index={index}
-                      status={step.status}
-                      dispatch={dispatch}
-                      setFileInfo={setFileInfo}
-                    />
-                    <QA
-                      index={index}
-                      status={step.status}
-                      dispatch={dispatch}
-                      fileInfo={fileInfo[index]}
-                      setResponseInfo={setResponseInfo}
-                      responseInfo={responseInfo[index]}
-                    />
-                  </>
+                  <FileUploader
+                    index={index}
+                    status={step.status}
+                    dispatch={dispatch}
+                    setFileInfo={setFileInfo}
+                  />
                 )}
+                <QA
+                  index={index}
+                  status={step.status}
+                  dispatch={dispatch}
+                  fileInfo={fileInfo[index]}
+                  setResponseInfo={setResponseInfo}
+                  responseInfo={responseInfo[index]}
+                />
                 <Separator />
               </div>
             ))}
