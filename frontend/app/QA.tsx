@@ -32,7 +32,8 @@ const QA = ({
   const handleSend = async () => {
     try {
       setErrorMessage("");
-      await sendPrompt(fileInfo, index);
+      const donePayload = await sendPrompt(fileInfo, index);
+      console.log('"done": ', donePayload.status, donePayload.message);
     } catch (err) {
       if (err instanceof Error) {
         setErrorMessage(err.message);

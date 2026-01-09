@@ -1,10 +1,12 @@
 "use client";
 import AutoRunLoader from "./AutoRunLoader";
-import { useState } from "react";
 import { TreeNode } from "./types";
 
-const AutoBlock = () => {
-  const [tree, setTree] = useState<TreeNode[]>([]);
+interface AutoBlockProps {
+  tree: TreeNode[];
+  setTree: React.Dispatch<React.SetStateAction<TreeNode[]>>;
+}
+const AutoBlock: React.FC<AutoBlockProps> = ({ tree, setTree }) => {
   return (
     <div className="mx-4">
       <AutoRunLoader tree={tree} setTree={setTree} />

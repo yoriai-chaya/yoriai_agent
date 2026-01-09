@@ -14,6 +14,8 @@ interface UseSSEPromptProps {
   setResponseInfo: React.Dispatch<React.SetStateAction<ResponseInfo[]>>;
 }
 
+type DonePayload = Extract<StreamResponse, { event: "done" }>["payload"];
+
 export const useSSEPrompt = ({
   dispatch,
   setResponseInfo,
@@ -60,6 +62,9 @@ export const useSSEPrompt = ({
   const sendPrompt = useCallback(
     async (fileInfo: FileInfo, index: number) => {
       console.log("sendPrompt called");
+      if (!API_BASE) {
+        return Promise.reject(new Error("NEXT_PUBLIC_API_BASE_URL is not set"));
+      }
       if (esRef.current) {
         // Prevent duplicate
         console.log("prevent duplicate");
@@ -86,55 +91,111 @@ export const useSSEPrompt = ({
         console.log("new EventSource");
         const es = new EventSource(url, { withCredentials: false });
         console.log(`es : ${es}`);
+        esRef.current = es;
 
-        // Listen "started" (special handling)
-        es.addEventListener(EventTypes.STARTED, (e) => {
-          console.log("- started event -");
-          const data = JSON.parse((e as MessageEvent).data);
-          console.log(`data: ${JSON.stringify(data, null, 2)}`);
-          console.log("dispatch send_prompt");
-          dispatch({ type: "SEND_PROMPT", index });
-          const sres: StreamResponse = {
-            event: EventTypes.STARTED,
-            payload: data,
+        // Returns a Promise that resolves when the "done" event is received
+        return await new Promise<DonePayload>((resolve, reject) => {
+          let settled = false;
+
+          const safeResolve = (payload: DonePayload) => {
+            if (settled) return;
+            settled = true;
+            es.close();
+            esRef.current = null;
+            resolve(payload);
           };
-          setResponseInfo((prev) => {
-            const updated = [...prev];
-            updated[index] = {
-              r_event: [
-                {
-                  s_res: sres,
-                  r_time: new Date(),
-                },
-              ],
-            };
-            return updated;
+          const safeReject = (err: Error) => {
+            if (settled) return;
+            settled = true;
+            es.close();
+            esRef.current = null;
+            reject(err);
+          };
+
+          // Listen "started" (special handling)
+          es.addEventListener(EventTypes.STARTED, (e) => {
+            try {
+              console.log("- started event -");
+              const data = JSON.parse((e as MessageEvent).data);
+              console.log(`data: ${JSON.stringify(data, null, 2)}`);
+              console.log("dispatch send_prompt");
+              dispatch({ type: "SEND_PROMPT", index });
+              const sres: StreamResponse = {
+                event: EventTypes.STARTED,
+                payload: data,
+              };
+              setResponseInfo((prev) => {
+                const updated = [...prev];
+                updated[index] = {
+                  r_event: [{ s_res: sres, r_time: new Date() }],
+                };
+                return updated;
+              });
+            } catch (err) {
+              safeReject(err instanceof Error ? err : new Error(String(err)));
+            }
           });
-        });
 
-        // Listen "done" (special handling)
-        es.addEventListener(EventTypes.DONE, (e) => {
-          console.log("- done event -");
-          const data = JSON.parse((e as MessageEvent).data);
-          console.log(`data: ${JSON.stringify(data, null, 2)}`);
-          const sres: StreamResponse = {
-            event: EventTypes.DONE,
-            payload: data,
+          // Listen "done" (special handling)
+          es.addEventListener(EventTypes.DONE, (e) => {
+            try {
+              console.log("- done event -");
+              const data = JSON.parse((e as MessageEvent).data);
+              console.log(`data: ${JSON.stringify(data, null, 2)}`);
+              const sres: StreamResponse = {
+                event: EventTypes.DONE,
+                payload: data,
+              };
+              setEvent(sres, index);
+              dispatch({ type: "DONE", index });
+              safeResolve(data);
+            } catch (err) {
+              safeReject(err instanceof Error ? err : new Error(String(err)));
+            }
+          });
+
+          // Listen "system_error"
+          es.addEventListener(EventTypes.SYSTEM_ERROR, (e) => {
+            try {
+              const data = JSON.parse((e as MessageEvent).data) as Extract<
+                StreamResponse,
+                { event: "system_error" }
+              >["payload"];
+
+              const sres: StreamResponse = {
+                event: EventTypes.SYSTEM_ERROR,
+                payload: data,
+              };
+              setEvent(sres, index);
+              safeReject(
+                new Error(`system_error: ${data.error} (${data.detail})`)
+              );
+            } catch (err) {
+              safeReject(err instanceof Error ? err : new Error(String(err)));
+            }
+          });
+
+          // Other events (common handling)
+          const commonEventTypes = Object.values(EventTypes).filter(
+            (type) =>
+              type !== EventTypes.STARTED &&
+              type !== EventTypes.DONE &&
+              type !== EventTypes.SYSTEM_ERROR
+          );
+          commonEventTypes.forEach((type) => {
+            es.addEventListener(type, (e) => {
+              try {
+                handleGenericEvent(type, e, index);
+              } catch (err) {
+                safeReject(err instanceof Error ? err : new Error(String(err)));
+              }
+            });
+          });
+
+          // SSE connection error
+          es.onerror = () => {
+            safeReject(new Error("SSE connection error"));
           };
-          setEvent(sres, index);
-
-          es.close();
-          esRef.current = null;
-          console.log("dispatch done");
-          dispatch({ type: "DONE", index });
-        });
-
-        // Other events (common handling)
-        const commonEventTypes = Object.values(EventTypes).filter(
-          (type) => type !== EventTypes.STARTED && type !== EventTypes.DONE
-        );
-        commonEventTypes.forEach((type) => {
-          es.addEventListener(type, (e) => handleGenericEvent(type, e, index));
         });
       } catch (error) {
         console.log("Error sending: ", error);
@@ -144,7 +205,7 @@ export const useSSEPrompt = ({
         } else if (error instanceof Error) {
           message = error.message;
         }
-        return Promise.reject(message);
+        return Promise.reject(new Error(message));
       }
     },
     [API_BASE, dispatch, handleGenericEvent, setEvent, setResponseInfo]

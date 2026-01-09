@@ -7,7 +7,7 @@ import QA from "./QA";
 import ShowPrompt from "./ShowPrompt";
 import StreamDetail from "./StreamDetail";
 import Header from "./Header";
-import { State, FileInfo, ResponseInfo, Mode } from "./types";
+import { State, FileInfo, ResponseInfo, Mode, TreeNode } from "./types";
 import { reducer } from "./reducer";
 import AutoBlock from "./AutoBlock";
 
@@ -25,6 +25,7 @@ export default function App() {
   const [responseInfo, setResponseInfo] =
     useState<ResponseInfo[]>(initialResponseInfo);
   const [mode, setMode] = useState<Mode>("Manual");
+  const [tree, setTree] = useState<TreeNode[]>([]);
   useEffect(() => {
     console.log("fileInfo updated: ", fileInfo);
     scrollRightPanel();
@@ -74,10 +75,12 @@ export default function App() {
       <div className="flex flex-1 overflow-hidden">
         {/* Side-Panel */}
         <ScrollArea className="w-3/15 p-4 border-r space-y-4">
-          <div>
-            <p>Auto Mode Panel</p>
-            <AutoBlock />
-          </div>
+          {mode === "Auto" && (
+            <div>
+              <p>Auto Mode Panel</p>
+              <AutoBlock tree={tree} setTree={setTree} />
+            </div>
+          )}
         </ScrollArea>
         {/* Left-Panel */}
         <ScrollArea className="w-6/15 p-4 border-r space-y-4">
@@ -87,20 +90,24 @@ export default function App() {
                 <p className="text-app-step my-2">
                   Step {index} - Status: {step.status}
                 </p>
-                <FileUploader
-                  index={index}
-                  status={step.status}
-                  dispatch={dispatch}
-                  setFileInfo={setFileInfo}
-                />
-                <QA
-                  index={index}
-                  status={step.status}
-                  dispatch={dispatch}
-                  fileInfo={fileInfo[index]}
-                  setResponseInfo={setResponseInfo}
-                  responseInfo={responseInfo[index]}
-                />
+                {mode === "Manual" && (
+                  <>
+                    <FileUploader
+                      index={index}
+                      status={step.status}
+                      dispatch={dispatch}
+                      setFileInfo={setFileInfo}
+                    />
+                    <QA
+                      index={index}
+                      status={step.status}
+                      dispatch={dispatch}
+                      fileInfo={fileInfo[index]}
+                      setResponseInfo={setResponseInfo}
+                      responseInfo={responseInfo[index]}
+                    />
+                  </>
+                )}
                 <Separator />
               </div>
             ))}
