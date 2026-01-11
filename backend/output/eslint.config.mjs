@@ -3,6 +3,7 @@ import { fileURLToPath } from "url";
 import { FlatCompat } from "@eslint/eslintrc";
 import noImgElement from "./eslint-custom-rules/no-img-element.mjs";
 import noTestidOnSelect from "./eslint-custom-rules/no-testid-on-select.mjs";
+import noNamedImportExport from "./eslint-custom-rules/no-named-import-export.mjs";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -26,6 +27,7 @@ const eslintConfig = [
         rules: {
           "no-img-element": noImgElement,
           "no-testid-on-select": noTestidOnSelect,
+          "no-named-import-export": noNamedImportExport,
         },
       },
     },
@@ -33,6 +35,7 @@ const eslintConfig = [
       "@next/next/no-img-element": "off",
       "custom-rules/no-img-element": "error",
       "custom-rules/no-testid-on-select": "error",
+      "custom-rules/no-named-import-export": "error",
     },
   },
 ];
