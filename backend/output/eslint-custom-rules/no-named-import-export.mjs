@@ -28,11 +28,20 @@ function isUserComponentImport(source) {
   return false;
 }
 
+function isTestFile(filename) {
+  return filename.endsWith(".spec.ts") || filename.endsWith(".spec.tsx");
+}
+
 const rule = {
   meta: {
     type: "problem",
     docs: {
-      description: "Enforce default import/export for user-defined components.",
+      // Adding prompt statements
+      description: `
+        When generating Next.js component code, always use default exports 
+        and default imports. Do not use named exports or named imports, 
+        as they will cause ESLint errors in this project.
+      `.trim(),
     },
     schema: [],
     messages: {
@@ -44,6 +53,12 @@ const rule = {
   },
 
   create(context) {
+    const filename = context.getFilename();
+    // Skip named import/export checks for test files
+    if (isTestFile(filename)) {
+      return {};
+    }
+
     return {
       ImportDeclaration(node) {
         const source = node.source.value;
