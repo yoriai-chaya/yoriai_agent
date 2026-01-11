@@ -154,27 +154,6 @@ export const useSSEPrompt = ({
             }
           });
 
-          // Listen "system_error"
-          es.addEventListener(EventTypes.SYSTEM_ERROR, (e) => {
-            try {
-              const data = JSON.parse((e as MessageEvent).data) as Extract<
-                StreamResponse,
-                { event: "system_error" }
-              >["payload"];
-
-              const sres: StreamResponse = {
-                event: EventTypes.SYSTEM_ERROR,
-                payload: data,
-              };
-              setEvent(sres, index);
-              safeReject(
-                new Error(`system_error: ${data.error} (${data.detail})`)
-              );
-            } catch (err) {
-              safeReject(err instanceof Error ? err : new Error(String(err)));
-            }
-          });
-
           // Other events (common handling)
           const commonEventTypes = Object.values(EventTypes).filter(
             (type) =>
