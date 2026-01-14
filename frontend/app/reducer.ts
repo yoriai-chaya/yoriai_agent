@@ -1,7 +1,13 @@
 import { State, Action } from "./types";
+
+const initialState: State = {
+  steps: [{ status: "Unloaded" }],
+};
 export const reducer = (state: State, action: Action): State => {
   const newSteps = [...state.steps];
   switch (action.type) {
+    case "RESET":
+      return initialState;
     case "LOAD_FILE":
       newSteps[action.index].status = "Loaded";
       return { steps: newSteps };

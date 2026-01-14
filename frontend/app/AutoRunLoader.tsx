@@ -58,8 +58,20 @@ const AutoRunLoader: React.FC<AutoRunLoaderProps> = ({
   const { sendPrompt } = useSSEPrompt({ dispatch, setResponseInfo });
   const files = useMemo(() => flattenTree(tree), [tree]);
 
+  const initialFileInfo: FileInfo[] = [
+    { filename: "", content: "", mtime: new Date(0) },
+  ];
+  const initialResponseInfo: ResponseInfo[] = [];
+
+  // for "Skip" Checkbox control
   useEffect(() => {
-    if (autoRunState !== "failed") setSkipOnResume(false);
+    if (
+      autoRunState === "idle" ||
+      autoRunState === "running" ||
+      autoRunState === "finished"
+    ) {
+      setSkipOnResume(false);
+    }
   }, [autoRunState]);
 
   const buildUserMessage = (status: number): string => {
@@ -105,13 +117,17 @@ const AutoRunLoader: React.FC<AutoRunLoaderProps> = ({
       for (const item of f) initMap[item.key] = "pending";
       setFileStatusKey(initMap);
 
+      // Left/Right Panel initialize
+      dispatch({ type: "RESET" });
+      setFileInfo(initialFileInfo);
+      setResponseInfo(initialResponseInfo);
+
+      // auto-run internal state reset
       setAutoRunState("idle");
       setCurrentIndex(-1);
-      setStopRequested(false);
-      pauseRequestRef.current = false;
-
       setNextStepIndex(0);
-      setCurrentIndex(-1);
+      pauseRequestRef.current = false;
+      setStopRequested(false);
     } catch (e) {
       setError("Network Error");
       setErrorDetail(String(e));
@@ -239,6 +255,7 @@ const AutoRunLoader: React.FC<AutoRunLoaderProps> = ({
       }
     }
     setAutoRunState("finished");
+    setStopRequested(false);
   };
 
   const handleRunAll = async () => {
@@ -249,8 +266,9 @@ const AutoRunLoader: React.FC<AutoRunLoaderProps> = ({
   };
 
   const handleStop = async () => {
+    if (autoRunState !== "running") return;
     pauseRequestRef.current = true;
-    setStopRequested(false);
+    setStopRequested(true);
   };
 
   const handleResume = async () => {
@@ -291,13 +309,15 @@ const AutoRunLoader: React.FC<AutoRunLoaderProps> = ({
   };
 
   // Button condition
-  const canRun = !loading && tree.length > 0 && autoRunState !== "running";
-  const canStop = autoRunState === "running";
-  const canResume = autoRunState === "pause" || autoRunState === "failed";
-  const canSkip = autoRunState === "failed";
-
-  const isLoadDisabled = loading || inputAutorunId.trim().length === 0;
-  //const isRunDisabled = loading || tree.length === 0 || autoRunState === "running";
+  const hasAutorunId = inputAutorunId.trim().length > 0;
+  const hasTree = tree.length > 0;
+  const canLoad = !loading && hasAutorunId && autoRunState !== "running";
+  const canRun = !loading && hasTree && autoRunState === "idle";
+  const canStop = autoRunState === "running" && !stopRequested;
+  const canResume =
+    !loading && (autoRunState === "pause" || autoRunState === "failed");
+  const canSkip =
+    !loading && (autoRunState === "pause" || autoRunState === "failed");
 
   return (
     <div className="flex flex-col">
@@ -313,7 +333,7 @@ const AutoRunLoader: React.FC<AutoRunLoaderProps> = ({
         <Button
           size="sm"
           onClick={handleLoad}
-          disabled={isLoadDisabled}
+          disabled={!canLoad}
           variant="ghost"
           className="
           shrink-0

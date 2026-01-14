@@ -3,7 +3,8 @@ export type State = { steps: ChatStep[] };
 export type Action =
   | { type: "LOAD_FILE"; index: number }
   | { type: "SEND_PROMPT"; index: number }
-  | { type: "DONE"; index: number };
+  | { type: "DONE"; index: number }
+  | { type: "RESET" };
 export type FileInfo = {
   filename: string;
   content: string;
