@@ -2,6 +2,8 @@
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import { Spinner } from "@/components/ui/spinner";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   TreeNode,
   Action,
@@ -44,6 +46,8 @@ const AutoRunLoader: React.FC<AutoRunLoaderProps> = ({
   // auto-run status
   const [autoRunState, setAutoRunState] = useState<AutoRunState>("idle");
   const [currentIndex, setCurrentIndex] = useState<number>(-1);
+  const [skipOnResume, setSkipOnResume] = useState(false);
+  const [stopRequested, setStopRequested] = useState(false);
 
   const pauseRequestRef = useRef(false);
 
@@ -100,6 +104,7 @@ const AutoRunLoader: React.FC<AutoRunLoaderProps> = ({
       setError("Network Error");
       setErrorDetail(String(e));
     } finally {
+      setStopRequested(false);
       setLoading(false);
     }
   };
@@ -135,6 +140,7 @@ const AutoRunLoader: React.FC<AutoRunLoaderProps> = ({
     }
     setAutoRunState("running");
     pauseRequestRef.current = false;
+    setStopRequested(false);
 
     for (let i = startIndex; i < files.length; i++) {
       const f = files[i];
@@ -157,21 +163,27 @@ const AutoRunLoader: React.FC<AutoRunLoaderProps> = ({
           { filename: f.name, content: f.content, mtime: f.mtime },
           i
         );
+        if (pauseRequestRef.current) {
+          setStopRequested(false);
+        }
 
         if (done.status === ResponseStatus.COMPLETED) {
           setFileStatusKey((prev) => ({ ...prev, [f.key]: "success" }));
         } else {
           setFileStatusKey((prev) => ({ ...prev, [f.key]: "failed" }));
           setAutoRunState("failed");
+          setStopRequested(false);
           return;
         }
         if (pauseRequestRef.current) {
           setAutoRunState("pause");
+          setStopRequested(false);
           return;
         }
       } catch (e) {
         setFileStatusKey((prev) => ({ ...prev, [f.key]: "failed" }));
         setAutoRunState("failed");
+        setStopRequested(false);
         setError("Run failed");
         setErrorDetail(e instanceof Error ? e.message : String(e));
         return;
@@ -190,6 +202,7 @@ const AutoRunLoader: React.FC<AutoRunLoaderProps> = ({
 
   const handleStop = async () => {
     pauseRequestRef.current = true;
+    setStopRequested(false);
   };
 
   const handleResume = async () => {
@@ -199,9 +212,10 @@ const AutoRunLoader: React.FC<AutoRunLoaderProps> = ({
     if (files.length === 0) return;
     if (!(autoRunState === "pause" || autoRunState === "failed")) return;
 
-    const start = currentIndex + 1;
+    const start = skipOnResume ? currentIndex + 1 : currentIndex;
 
     if (
+      skipOnResume &&
       autoRunState === "failed" &&
       currentIndex >= 0 &&
       currentIndex < files.length
@@ -283,6 +297,24 @@ const AutoRunLoader: React.FC<AutoRunLoaderProps> = ({
           Stop
         </Button>
 
+        {stopRequested && (
+          <div className="flex items-center gap-2 pl-1 text-xs text-muted-foreground">
+            <Spinner />
+            <span>Stopping...</span>
+          </div>
+        )}
+
+        <div className="flex items-center gap-2 mt-1">
+          <Checkbox
+            id="skip-on-resume"
+            checked={skipOnResume}
+            onCheckedChange={(v) => setSkipOnResume(v === true)}
+            disabled={!canResume}
+          />
+          <Label htmlFor="skip-on-resume" className="text-xs">
+            Skip
+          </Label>
+        </div>
         <Button
           size="sm"
           onClick={handleResume}
