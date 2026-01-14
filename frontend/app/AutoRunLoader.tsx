@@ -12,8 +12,9 @@ import {
   AutoRunFileStatusMap,
   ResponseStatus,
   AutoRunState,
+  StreamResponse,
 } from "./types";
-import { useState, useMemo, useRef } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
 import { flattenTree } from "./autorunUtil";
 import TreeView from "./TreeView";
 import { useSSEPrompt } from "./useSSEPrompt";
@@ -39,7 +40,7 @@ const AutoRunLoader: React.FC<AutoRunLoaderProps> = ({
   const [errorDetail, setErrorDetail] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  // file status
+  // file status (tree view)
   const [fileStatusByKey, setFileStatusKey] = useState<AutoRunFileStatusMap>(
     {}
   );
@@ -48,11 +49,18 @@ const AutoRunLoader: React.FC<AutoRunLoaderProps> = ({
   const [currentIndex, setCurrentIndex] = useState<number>(-1);
   const [skipOnResume, setSkipOnResume] = useState(false);
   const [stopRequested, setStopRequested] = useState(false);
+  const [nextStepIndex, setNextStepIndex] = useState<number>(0);
+  // for future : currentStepIndex
+  const [, setCurrentStepIndex] = useState<number>(-1);
 
   const pauseRequestRef = useRef(false);
 
   const { sendPrompt } = useSSEPrompt({ dispatch, setResponseInfo });
   const files = useMemo(() => flattenTree(tree), [tree]);
+
+  useEffect(() => {
+    if (autoRunState !== "failed") setSkipOnResume(false);
+  }, [autoRunState]);
 
   const buildUserMessage = (status: number): string => {
     switch (status) {
@@ -99,7 +107,11 @@ const AutoRunLoader: React.FC<AutoRunLoaderProps> = ({
 
       setAutoRunState("idle");
       setCurrentIndex(-1);
+      setStopRequested(false);
       pauseRequestRef.current = false;
+
+      setNextStepIndex(0);
+      setCurrentIndex(-1);
     } catch (e) {
       setError("Network Error");
       setErrorDetail(String(e));
@@ -128,13 +140,33 @@ const AutoRunLoader: React.FC<AutoRunLoaderProps> = ({
     });
   };
 
-  const runFrom = async (startIndex: number) => {
+  // for error (sendPrompt catch) : pseudo system_error event
+  const appendSystemErrorEvent = (
+    i: number,
+    message: string,
+    detail: string
+  ) => {
+    const sres: StreamResponse = {
+      event: "system_error",
+      payload: { error: message, detail },
+    };
+    setResponseInfo((prev) => {
+      const updated = [...prev];
+      const prevEvents = updated[i]?.r_event ?? [];
+      updated[i] = {
+        r_event: [...prevEvents, { s_res: sres, r_time: new Date() }],
+      };
+      return updated;
+    });
+  };
+
+  const runFrom = async (startFileIndex: number) => {
     if (files.length === 0) {
       setError("No files");
       setErrorDetail("Tree has no files");
       return;
     }
-    if (startIndex >= files.length) {
+    if (startFileIndex >= files.length) {
       setAutoRunState("finished");
       return;
     }
@@ -142,30 +174,39 @@ const AutoRunLoader: React.FC<AutoRunLoaderProps> = ({
     pauseRequestRef.current = false;
     setStopRequested(false);
 
-    for (let i = startIndex; i < files.length; i++) {
-      const f = files[i];
-      setCurrentIndex(i);
+    let stepIndex = nextStepIndex;
+    for (
+      let fileIndex = startFileIndex;
+      fileIndex < files.length;
+      fileIndex++
+    ) {
+      const f = files[fileIndex];
+      setCurrentIndex(fileIndex);
+      setCurrentStepIndex(stepIndex);
 
       setFileStatusKey((prev) => ({ ...prev, [f.key]: "running" }));
 
-      ensureFileInfoSlot(i);
-      ensureResponseInfoSlot(i);
+      ensureFileInfoSlot(stepIndex);
+      ensureResponseInfoSlot(stepIndex);
 
       setFileInfo((prev) => {
         const next = [...prev];
-        next[i] = { filename: f.name, content: f.content, mtime: f.mtime };
+        next[stepIndex] = {
+          filename: f.name,
+          content: f.content,
+          mtime: f.mtime,
+        };
         return next;
       });
-      dispatch({ type: "LOAD_FILE", index: i });
+      dispatch({ type: "LOAD_FILE", index: stepIndex });
 
       try {
         const done = await sendPrompt(
           { filename: f.name, content: f.content, mtime: f.mtime },
-          i
+          stepIndex
         );
-        if (pauseRequestRef.current) {
-          setStopRequested(false);
-        }
+        stepIndex++;
+        setNextStepIndex(stepIndex);
 
         if (done.status === ResponseStatus.COMPLETED) {
           setFileStatusKey((prev) => ({ ...prev, [f.key]: "success" }));
@@ -175,17 +216,25 @@ const AutoRunLoader: React.FC<AutoRunLoaderProps> = ({
           setStopRequested(false);
           return;
         }
+        // If "Stop" button is pressed, pause after receiving "done" event
         if (pauseRequestRef.current) {
           setAutoRunState("pause");
           setStopRequested(false);
           return;
         }
       } catch (e) {
+        // Force "done" and proceed to the next step
+        const msg = e instanceof Error ? e.message : String(e);
+        appendSystemErrorEvent(stepIndex, "Client error", msg);
+        dispatch({ type: "DONE", index: stepIndex });
+        stepIndex++;
+        setNextStepIndex(stepIndex);
+
         setFileStatusKey((prev) => ({ ...prev, [f.key]: "failed" }));
         setAutoRunState("failed");
         setStopRequested(false);
         setError("Run failed");
-        setErrorDetail(e instanceof Error ? e.message : String(e));
+        setErrorDetail(msg);
         return;
       }
     }
@@ -195,7 +244,6 @@ const AutoRunLoader: React.FC<AutoRunLoaderProps> = ({
   const handleRunAll = async () => {
     setError(null);
     setErrorDetail(null);
-
     if (autoRunState === "running") return;
     await runFrom(0);
   };
@@ -246,6 +294,7 @@ const AutoRunLoader: React.FC<AutoRunLoaderProps> = ({
   const canRun = !loading && tree.length > 0 && autoRunState !== "running";
   const canStop = autoRunState === "running";
   const canResume = autoRunState === "pause" || autoRunState === "failed";
+  const canSkip = autoRunState === "failed";
 
   const isLoadDisabled = loading || inputAutorunId.trim().length === 0;
   //const isRunDisabled = loading || tree.length === 0 || autoRunState === "running";
@@ -309,7 +358,7 @@ const AutoRunLoader: React.FC<AutoRunLoaderProps> = ({
             id="skip-on-resume"
             checked={skipOnResume}
             onCheckedChange={(v) => setSkipOnResume(v === true)}
-            disabled={!canResume}
+            disabled={!canSkip}
           />
           <Label htmlFor="skip-on-resume" className="text-xs">
             Skip
