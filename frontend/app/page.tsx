@@ -7,13 +7,11 @@ import QA from "./QA";
 import ShowPrompt from "./ShowPrompt";
 import StreamDetail from "./StreamDetail";
 import Header from "./Header";
-import { State, FileInfo, ResponseInfo, Mode, TreeNode } from "./types";
+import { FileInfo, ResponseInfo, Mode, TreeNode } from "./types";
 import { reducer } from "./reducer";
 import AutoBlock from "./AutoBlock";
+import { initialState } from "./state";
 
-const initialState: State = {
-  steps: [{ status: "Unloaded" }],
-};
 const initialFileInfo: FileInfo[] = [
   { filename: "", content: "", mtime: new Date(0) },
 ];

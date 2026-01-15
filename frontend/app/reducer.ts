@@ -1,25 +1,36 @@
-import { State, Action } from "./types";
+import { State, Action, ChatStep } from "./types";
+import { initialState } from "./state";
 
-const initialState: State = {
-  steps: [{ status: "Unloaded" }],
-};
 export const reducer = (state: State, action: Action): State => {
-  const newSteps = [...state.steps];
   switch (action.type) {
     case "RESET":
-      return initialState;
+      return structuredClone(initialState);
+
     case "LOAD_FILE":
-      newSteps[action.index].status = "Loaded";
-      return { steps: newSteps };
+      return {
+        steps: state.steps.map((step, i) =>
+          i === action.index ? { ...step, status: "Loaded" } : step
+        ),
+      };
+
     case "SEND_PROMPT":
-      newSteps[action.index].status = "Sended";
-      return { steps: newSteps };
+      return {
+        steps: state.steps.map((step, i) =>
+          i === action.index ? { ...step, status: "Sended" } : step
+        ),
+      };
+
     case "DONE":
-      newSteps[action.index].status = "Done";
-      if (action.index === newSteps.length - 1) {
-        newSteps.push({ status: "Unloaded" });
+      const updatedSteps = state.steps.map<ChatStep>((step, i) =>
+        i === action.index ? { ...step, status: "Done" } : step
+      );
+      if (action.index === state.steps.length - 1) {
+        return {
+          steps: [...updatedSteps, { status: "Unloaded" }],
+        };
       }
-      return { steps: newSteps };
+      return { steps: updatedSteps };
+
     default:
       return state;
   }
