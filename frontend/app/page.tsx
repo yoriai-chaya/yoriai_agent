@@ -75,7 +75,6 @@ export default function App() {
         <ScrollArea className="w-3/15 p-4 border-r space-y-4">
           {mode === "Auto" && (
             <div>
-              <p>Auto Mode Panel</p>
               <AutoBlock
                 tree={tree}
                 setTree={setTree}
@@ -92,7 +91,7 @@ export default function App() {
             {state.steps.map((step, index) => (
               <div key={index}>
                 <p className="text-app-step my-2">
-                  Step {index} - Status: {step.status}
+                  Step {index + 1} - Status: {step.status}
                 </p>
                 {mode === "Manual" && (
                   <FileUploader
@@ -121,7 +120,7 @@ export default function App() {
             {state.steps.map((step, index) => (
               <div key={index}>
                 <p className="text-app-step my-2">
-                  Step {index} - Status: {step.status}
+                  Step {index + 1} - Status: {step.status}
                 </p>
                 <ShowPrompt
                   index={index}

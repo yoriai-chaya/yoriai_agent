@@ -47,7 +47,7 @@ const AutoRunLoader: React.FC<AutoRunLoaderProps> = ({
   // auto-run status
   const [autoRunState, setAutoRunState] = useState<AutoRunState>("idle");
   const [currentIndex, setCurrentIndex] = useState<number>(-1);
-  const [skipOnResume, setSkipOnResume] = useState(false);
+  const [skipOnCont, setSkipOnCont] = useState(false);
   const [stopRequested, setStopRequested] = useState(false);
   const [nextStepIndex, setNextStepIndex] = useState<number>(0);
   // for future : currentStepIndex
@@ -70,7 +70,7 @@ const AutoRunLoader: React.FC<AutoRunLoaderProps> = ({
       autoRunState === "running" ||
       autoRunState === "finished"
     ) {
-      setSkipOnResume(false);
+      setSkipOnCont(false);
     }
   }, [autoRunState]);
 
@@ -258,30 +258,30 @@ const AutoRunLoader: React.FC<AutoRunLoaderProps> = ({
     setStopRequested(false);
   };
 
-  const handleRunAll = async () => {
+  const handleRun = async () => {
     setError(null);
     setErrorDetail(null);
     if (autoRunState === "running") return;
     await runFrom(0);
   };
 
-  const handleStop = async () => {
+  const handlePause = async () => {
     if (autoRunState !== "running") return;
     pauseRequestRef.current = true;
     setStopRequested(true);
   };
 
-  const handleResume = async () => {
+  const handleCont = async () => {
     setError(null);
     setErrorDetail(null);
 
     if (files.length === 0) return;
     if (!(autoRunState === "pause" || autoRunState === "failed")) return;
 
-    const start = skipOnResume ? currentIndex + 1 : currentIndex;
+    const start = skipOnCont ? currentIndex + 1 : currentIndex;
 
     if (
-      skipOnResume &&
+      skipOnCont &&
       autoRunState === "failed" &&
       currentIndex >= 0 &&
       currentIndex < files.length
@@ -293,35 +293,20 @@ const AutoRunLoader: React.FC<AutoRunLoaderProps> = ({
     await runFrom(start);
   };
 
-  // for debug (incremental development: run only one file)
-  const handleRunOne = async () => {
-    setError(null);
-    setErrorDetail(null);
-
-    if (files.length === 0) {
-      setError("No files");
-      setErrorDetail("Tree has no files");
-      return;
-    }
-    if (autoRunState === "running") return;
-
-    await runFrom(0);
-  };
-
   // Button condition
   const hasAutorunId = inputAutorunId.trim().length > 0;
   const hasTree = tree.length > 0;
   const canLoad = !loading && hasAutorunId && autoRunState !== "running";
   const canRun = !loading && hasTree && autoRunState === "idle";
-  const canStop = autoRunState === "running" && !stopRequested;
-  const canResume =
+  const canPause = autoRunState === "running" && !stopRequested;
+  const canCont =
     !loading && (autoRunState === "pause" || autoRunState === "failed");
   const canSkip =
     !loading && (autoRunState === "pause" || autoRunState === "failed");
 
   return (
-    <div className="flex flex-col">
-      <Label className="mt-2">AutoRunID</Label>
+    <div>
+      <Label className="mt-1 cols-span-2 font-midium">Autorun-ID: </Label>
       <Input
         id="autorun-id"
         placeholder="dir, dir/subdir"
@@ -329,102 +314,97 @@ const AutoRunLoader: React.FC<AutoRunLoaderProps> = ({
         onChange={(e) => setInputAutorunId(e.target.value)}
         className="border-0 border-b rounded-none focus-visible:ring-0 h-6 mt-1"
       />
-      <div className="flex flex-col gap-2 mt-1">
-        <Button
-          size="sm"
-          onClick={handleLoad}
-          disabled={!canLoad}
-          variant="ghost"
-          className="
+      {/* === Controls === */}
+      <div className="flex flex-col space-y-0">
+        {/* Line-1: Load / Run */}
+        <div className="flex items-center">
+          <Button
+            size="sm"
+            onClick={handleLoad}
+            disabled={!canLoad}
+            variant="ghost"
+            className="
           shrink-0
           text-ctm-blue-500
           hover:text-ctm-blue-600
           hover:bg-transparent 
-          mt-1
         "
-        >
-          {loading ? "Loading..." : "Load"}
-        </Button>
+          >
+            {loading ? "Loading..." : "Load"}
+          </Button>
 
-        <Button
-          size="sm"
-          onClick={handleRunAll}
-          disabled={!canRun}
-          variant="ghost"
-          className="shrink-0 text-ctm-blue-500 hover:text-ctm-blue-600 hover:bg-transparent"
-        >
-          Run All
-        </Button>
-
-        <Button
-          size="sm"
-          onClick={handleStop}
-          disabled={!canStop}
-          variant="ghost"
-          className="shrink-0 text-ctm-blue-500 hover:text-ctm-blue-600 hover:bg-transparent"
-        >
-          Stop
-        </Button>
-
-        {stopRequested && (
-          <div className="flex items-center gap-2 pl-1 text-xs text-muted-foreground">
-            <Spinner />
-            <span>Stopping...</span>
-          </div>
-        )}
-
-        <div className="flex items-center gap-2 mt-1">
-          <Checkbox
-            id="skip-on-resume"
-            checked={skipOnResume}
-            onCheckedChange={(v) => setSkipOnResume(v === true)}
-            disabled={!canSkip}
-          />
-          <Label htmlFor="skip-on-resume" className="text-xs">
-            Skip
-          </Label>
+          <Button
+            size="sm"
+            onClick={handleRun}
+            disabled={!canRun}
+            variant="ghost"
+            className="ml-2 shrink-0 text-ctm-blue-500 hover:text-ctm-blue-600 hover:bg-transparent"
+          >
+            Run
+          </Button>
         </div>
-        <Button
-          size="sm"
-          onClick={handleResume}
-          disabled={!canResume}
-          variant="ghost"
-          className="shrink-0 text-ctm-blue-500 hover:text-ctm-blue-600 hover:bg-transparent"
-        >
-          Resume
-        </Button>
-
-        <Button
-          size="sm"
-          onClick={handleRunOne}
-          disabled={!canRun}
-          variant="ghost"
-          className="shrink-0 text-ctm-blue-500 hover:text-ctm-blue-600 hover:bg-transparent"
-        >
-          Run One
-        </Button>
-      </div>
-      {tree.length > 0 && (
-        <div className="mt-2 text-xs text-muted-foreground">
-          state: <span className="font-medium">{autoRunState}</span>
-          {files.length > 0 && (
-            <>
-              {" "}
-              / index:{" "}
-              <span className="font-medium">
-                {currentIndex >= 0
-                  ? `${currentIndex + 1}/${files.length}`
-                  : "-"}
-              </span>
-            </>
+        {/* Line-2: Pause / Cont / Skip */}
+        <div className="flex items-center -mt-2">
+          <Button
+            size="sm"
+            onClick={handlePause}
+            disabled={!canPause}
+            variant="ghost"
+            className="shrink-0 text-ctm-blue-500 hover:text-ctm-blue-600 hover:bg-transparent"
+          >
+            Pause
+          </Button>
+          <Button
+            size="sm"
+            onClick={handleCont}
+            disabled={!canCont}
+            variant="ghost"
+            className="shrink-0 text-ctm-blue-500 hover:text-ctm-blue-600 hover:bg-transparent"
+          >
+            Cont
+          </Button>
+          <div className="flex items-center gap-1">
+            <Checkbox
+              id="skip-on-cont"
+              checked={skipOnCont}
+              onCheckedChange={(v) => setSkipOnCont(v === true)}
+              disabled={!canSkip}
+            />
+            <Label htmlFor="skip-on-cont" className="text-xs">
+              Skip
+            </Label>
+          </div>
+          {stopRequested && (
+            <div className="flex items-center gap-2 pl-1 text-xs text-muted-foreground">
+              <Spinner />
+              <span>Stopping...</span>
+            </div>
           )}
         </div>
-      )}
+
+        {/* Line-3: state / index*/}
+        {tree.length > 0 && (
+          <div className="ml-3 text-xs text-muted-foreground">
+            Status: <span className="font-medium">{autoRunState}</span>
+            {files.length > 0 && (
+              <>
+                {" "}
+                / File index:{" "}
+                <span>
+                  {currentIndex >= 0
+                    ? `${currentIndex + 1}/${files.length}`
+                    : "-"}
+                </span>
+              </>
+            )}
+          </div>
+        )}
+      </div>
       {error && (
         <div className="text-xs text-red-500">
           <div>{error}</div>
           {errorDetail && (
-            <details className="mt-1 cursor-pointer">
+            <details className="cursor-pointer">
               <summary className="text-xs">detail</summary>
               <p className="text-xs">{errorDetail}</p>
             </details>
