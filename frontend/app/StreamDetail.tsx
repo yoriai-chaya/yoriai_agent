@@ -15,42 +15,42 @@ interface StreamDetailProps {
 
 // Type Guard Function
 function isCodeEvent(
-  event: StreamResponse
+  event: StreamResponse,
 ): event is Extract<StreamResponse, { event: typeof EventTypes.CODE }> {
   return event.event === EventTypes.CODE;
 }
 function isUpdateEvent(
-  event: StreamResponse
+  event: StreamResponse,
 ): event is Extract<StreamResponse, { event: typeof EventTypes.AGENT_UPDATE }> {
   return event.event === EventTypes.AGENT_UPDATE;
 }
 function isCheckResultEvent(
-  event: StreamResponse
+  event: StreamResponse,
 ): event is Extract<StreamResponse, { event: typeof EventTypes.CHECK_RESULT }> {
   return event.event === EventTypes.CHECK_RESULT;
 }
 function isAgentResultEvent(
-  event: StreamResponse
+  event: StreamResponse,
 ): event is Extract<StreamResponse, { event: typeof EventTypes.AGENT_RESULT }> {
   return event.event === EventTypes.AGENT_RESULT;
 }
 function isTestResultEvent(
-  event: StreamResponse
+  event: StreamResponse,
 ): event is Extract<StreamResponse, { event: typeof EventTypes.TEST_RESULT }> {
   return event.event === EventTypes.TEST_RESULT;
 }
 function isDoneEvent(
-  event: StreamResponse
+  event: StreamResponse,
 ): event is Extract<StreamResponse, { event: typeof EventTypes.DONE }> {
   return event.event === EventTypes.DONE;
 }
 function isSystemErrorEvent(
-  event: StreamResponse
+  event: StreamResponse,
 ): event is Extract<StreamResponse, { event: typeof EventTypes.SYSTEM_ERROR }> {
   return event.event === EventTypes.SYSTEM_ERROR;
 }
 function isTestScreenshotEvent(
-  event: StreamResponse
+  event: StreamResponse,
 ): event is Extract<
   StreamResponse,
   { event: typeof EventTypes.TEST_SCREENSHOT }
@@ -107,10 +107,12 @@ const StreamDetail = ({ status, responseInfo }: StreamDetailProps) => {
                   <span className="text-app-detail pl-2">
                     {checker} check:{" "}
                     {result ? (
-                      <span className="text-blue-500">{result_str}</span>
+                      <span className="text-ctm-blue-500">{result_str}</span>
                     ) : (
                       <>
-                        <span className="text-red-500">{result_str}</span>
+                        <span className="text-ctm-orange-400">
+                          {result_str}
+                        </span>
                         <div className="text-app-detail pl-4">
                           rule: {rule_id}
                         </div>
@@ -135,12 +137,12 @@ const StreamDetail = ({ status, responseInfo }: StreamDetailProps) => {
                     {result ? (
                       <>
                         <span>result: </span>
-                        <span className="text-blue-500">{resultStr}</span>
+                        <span className="text-ctm-blue-500">{resultStr}</span>
                       </>
                     ) : (
                       <>
                         <span>result: </span>
-                        <span className="text-red-500">{resultStr}</span>
+                        <span className="text-ctm-orange-400">{resultStr}</span>
                         <div className="text-app-detail pl-4">
                           detail: {error_detail}
                         </div>
@@ -163,11 +165,11 @@ const StreamDetail = ({ status, responseInfo }: StreamDetailProps) => {
                     check:{" "}
                     {result ? (
                       <>
-                        <span className="text-blue-500">{resultStr}</span>
+                        <span className="text-ctm-blue-500">{resultStr}</span>
                       </>
                     ) : (
                       <>
-                        <span className="text-red-500">{resultStr}</span>
+                        <span className="text-ctm-orange-400">{resultStr}</span>
                       </>
                     )}
                     <div className="text-app-detail pl-4">
@@ -193,13 +195,17 @@ const StreamDetail = ({ status, responseInfo }: StreamDetailProps) => {
                                 <div>
                                   Result:{" "}
                                   {spec.result ? (
-                                    <span className="text-blue-500">OK</span>
+                                    <span className="text-ctm-blue-500">
+                                      OK
+                                    </span>
                                   ) : (
-                                    <span className="text-red-500">NG</span>
+                                    <span className="text-ctm-orange-400">
+                                      NG
+                                    </span>
                                   )}
                                 </div>
                                 {!spec.result && (
-                                  <div className="pl-4 text-gray-500">
+                                  <div className="pl-4 text-ctm-orange-400">
                                     {spec.error_summary && (
                                       <div>Summary: {spec.error_summary}</div>
                                     )}
@@ -227,7 +233,7 @@ const StreamDetail = ({ status, responseInfo }: StreamDetailProps) => {
               console.log(`api_url: ${api_url}`);
               return (
                 <div key={`screenshot-${idx}`} className="pl-4 mt-2">
-                  <div className="text-app-detail text-gray-600">
+                  <div className="text-app-detail text-muted-foreground">
                     <div>
                       Screenshot: spec={spec}, filename={filename}, updated=
                       {updated ? "true" : "false"}
@@ -257,7 +263,11 @@ const StreamDetail = ({ status, responseInfo }: StreamDetailProps) => {
               return (
                 <div key={`done-${idx}`}>
                   <div className="text-app-detail">Done</div>
-                  <div className="text-app-detail pl-2">
+                  <div
+                    className={`text-app-detail pl-2 ${
+                      status === "Failed" ? "text-ctm-orange-400" : ""
+                    }`}
+                  >
                     <div>status: {status}</div>
                     <div>message: {message}</div>
                   </div>
@@ -271,7 +281,7 @@ const StreamDetail = ({ status, responseInfo }: StreamDetailProps) => {
               const detail = sr.payload.detail;
               return (
                 <div key={`system-error-${idx}`}>
-                  <div className="text-app-detail pl-2">
+                  <div className="text-ctm-orange-400 text-app-detail pl-2">
                     <div>{error}</div>
                     <div>{detail}</div>
                   </div>

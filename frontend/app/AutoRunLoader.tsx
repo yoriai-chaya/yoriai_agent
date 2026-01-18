@@ -42,7 +42,7 @@ const AutoRunLoader: React.FC<AutoRunLoaderProps> = ({
 
   // file status (tree view)
   const [fileStatusByKey, setFileStatusKey] = useState<AutoRunFileStatusMap>(
-    {}
+    {},
   );
   // auto-run status
   const [autoRunState, setAutoRunState] = useState<AutoRunState>("idle");
@@ -57,6 +57,18 @@ const AutoRunLoader: React.FC<AutoRunLoaderProps> = ({
 
   const { sendPrompt } = useSSEPrompt({ dispatch, setResponseInfo });
   const files = useMemo(() => flattenTree(tree), [tree]);
+  const autoRunStateTextClass = useMemo(() => {
+    switch (autoRunState) {
+      case "pause":
+        return "text-ctm-yellow-400";
+      case "finished":
+        return "text-ctm-blue-500";
+      case "failed":
+        return "text-ctm-orange-400";
+      default:
+        return "";
+    }
+  }, [autoRunState]);
 
   const initialFileInfo: FileInfo[] = [
     { filename: "", content: "", mtime: new Date(0) },
@@ -99,7 +111,7 @@ const AutoRunLoader: React.FC<AutoRunLoaderProps> = ({
         `${API_BASE}/autorun/filelist?${params.toString()}`,
         {
           method: "GET",
-        }
+        },
       );
       if (!res.ok) {
         const body = await res.json().catch(() => null);
@@ -160,7 +172,7 @@ const AutoRunLoader: React.FC<AutoRunLoaderProps> = ({
   const appendSystemErrorEvent = (
     i: number,
     message: string,
-    detail: string
+    detail: string,
   ) => {
     const sres: StreamResponse = {
       event: "system_error",
@@ -219,7 +231,7 @@ const AutoRunLoader: React.FC<AutoRunLoaderProps> = ({
       try {
         const done = await sendPrompt(
           { filename: f.name, content: f.content, mtime: f.mtime },
-          stepIndex
+          stepIndex,
         );
         stepIndex++;
         setNextStepIndex(stepIndex);
@@ -343,6 +355,7 @@ const AutoRunLoader: React.FC<AutoRunLoaderProps> = ({
             Run
           </Button>
         </div>
+
         {/* Line-2: Pause / Cont / Skip */}
         <div className="flex items-center -mt-2">
           <Button
@@ -374,22 +387,25 @@ const AutoRunLoader: React.FC<AutoRunLoaderProps> = ({
               Skip
             </Label>
           </div>
-          {stopRequested && (
-            <div className="flex items-center gap-2 pl-1 text-xs text-muted-foreground">
-              <Spinner />
-              <span>Stopping...</span>
-            </div>
-          )}
         </div>
+
+        {/* Line-2': When pause clicked, inidcate stopping... */}
+        {stopRequested && (
+          <div className="flex items-center gap-2 pl-1 text-xs text-muted-foreground">
+            <Spinner />
+            <span className="text-ctm-yellow-200">Stopping...</span>
+          </div>
+        )}
 
         {/* Line-3: state / index*/}
         {tree.length > 0 && (
           <div className="ml-3 text-xs text-muted-foreground">
-            Status: <span className="font-medium">{autoRunState}</span>
+            <span className={`font-medium ${autoRunStateTextClass}`}>
+              {autoRunState}
+            </span>
             {files.length > 0 && (
               <>
-                {" "}
-                / File index:{" "}
+                ,{" "}
                 <span>
                   {currentIndex >= 0
                     ? `${currentIndex + 1}/${files.length}`
@@ -399,18 +415,20 @@ const AutoRunLoader: React.FC<AutoRunLoaderProps> = ({
             )}
           </div>
         )}
+
+        {/* Line-4: error */}
+        {error && (
+          <div className="text-xs text-ctm-orange-400">
+            <div>{error}</div>
+            {errorDetail && (
+              <details className="cursor-pointer">
+                <summary className="text-xs">detail</summary>
+                <p className="text-xs">{errorDetail}</p>
+              </details>
+            )}
+          </div>
+        )}
       </div>
-      {error && (
-        <div className="text-xs text-red-500">
-          <div>{error}</div>
-          {errorDetail && (
-            <details className="cursor-pointer">
-              <summary className="text-xs">detail</summary>
-              <p className="text-xs">{errorDetail}</p>
-            </details>
-          )}
-        </div>
-      )}
 
       {tree.length > 0 && (
         <div className="mt-4 border-t pt-2">

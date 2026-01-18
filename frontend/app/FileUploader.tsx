@@ -1,7 +1,6 @@
 "use client";
 import { ChangeEvent, useRef } from "react";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Action, FileInfo } from "./types";
 
 interface FileUploaderProps {
@@ -44,16 +43,7 @@ const FileUploader = ({
     fileInputRef.current?.click();
   };
   return (
-    <div className="grid grid-cols-6 items-center gap-2 mb-2">
-      {/* column-A */}
-      <div>
-        <Avatar className="bg-blue-100">
-          <AvatarImage src="/you.png" />
-          <AvatarFallback>Yo</AvatarFallback>
-        </Avatar>
-      </div>
-      {/* column-B */}
-      <span className="col-span-1 text-app-avatar">You</span>
+    <>
       {/* column-C,D,E */}
       {(status === "Unloaded" || status === "Loaded") && (
         <div className="col-span-3">
@@ -74,7 +64,7 @@ const FileUploader = ({
       )}
       {/* column-F */}
       <div></div>
-    </div>
+    </>
   );
 };
 

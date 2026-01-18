@@ -15,42 +15,42 @@ interface StreamEventProps {
 
 // Type Guard Function
 function isStartedEvent(
-  event: StreamResponse
+  event: StreamResponse,
 ): event is Extract<StreamResponse, { event: typeof EventTypes.STARTED }> {
   return event.event === EventTypes.STARTED;
 }
 function isUpdateEvent(
-  event: StreamResponse
+  event: StreamResponse,
 ): event is Extract<StreamResponse, { event: typeof EventTypes.AGENT_UPDATE }> {
   return event.event === EventTypes.AGENT_UPDATE;
 }
 function isCheckResultEvent(
-  event: StreamResponse
+  event: StreamResponse,
 ): event is Extract<StreamResponse, { event: typeof EventTypes.CHECK_RESULT }> {
   return event.event === EventTypes.CHECK_RESULT;
 }
 function isAgentResultEvent(
-  event: StreamResponse
+  event: StreamResponse,
 ): event is Extract<StreamResponse, { event: typeof EventTypes.AGENT_RESULT }> {
   return event.event === EventTypes.AGENT_RESULT;
 }
 function isTestResultEvent(
-  event: StreamResponse
+  event: StreamResponse,
 ): event is Extract<StreamResponse, { event: typeof EventTypes.TEST_RESULT }> {
   return event.event === EventTypes.TEST_RESULT;
 }
 function isDoneEvent(
-  event: StreamResponse
+  event: StreamResponse,
 ): event is Extract<StreamResponse, { event: typeof EventTypes.DONE }> {
   return event.event === EventTypes.DONE;
 }
 function isSystemErrorEvent(
-  event: StreamResponse
+  event: StreamResponse,
 ): event is Extract<StreamResponse, { event: typeof EventTypes.SYSTEM_ERROR }> {
   return event.event === EventTypes.SYSTEM_ERROR;
 }
 function isTestScreenshotEvent(
-  event: StreamResponse
+  event: StreamResponse,
 ): event is Extract<
   StreamResponse,
   { event: typeof EventTypes.TEST_SCREENSHOT }
@@ -80,16 +80,13 @@ const StreamEvent = ({ status, responseInfo }: StreamEventProps) => {
                       <span className="text-app-emoji pr-2">{emoji}</span>
                       {sr.payload.status}
                     </div>
-                    <div className="col-span-2 text-app-time text-gray-500">
+                    <div className="col-span-2 text-app-time text-muted-foreground">
                       {formatDateTime(ev.r_time)}
                     </div>
                     {/* second row*/}
                     <div></div>
                     <div className="col-span-5 text-app-info ml-5">
-                      <span className="text-app-emoji pr-1">{emoji}</span>
-                      <span className="text-ctm-blue-500">
-                        {sr.payload.step_id}
-                      </span>
+                      <span>{sr.payload.step_id}</span>
                     </div>
                   </div>
                 </div>
@@ -108,7 +105,7 @@ const StreamEvent = ({ status, responseInfo }: StreamEventProps) => {
                       <span className="text-app-emoji pr-2">{emoji}</span>
                       {agentName}
                     </div>
-                    <div className="col-span-2 text-app-time text-gray-500">
+                    <div className="col-span-2 text-app-time text-muted-foreground">
                       {formatDateTime(ev.r_time)}
                     </div>
                   </div>
@@ -119,26 +116,31 @@ const StreamEvent = ({ status, responseInfo }: StreamEventProps) => {
             // ----- check_result event -----
             if (isCheckResultEvent(sr)) {
               const result = sr.payload.result;
-              const result_str = result ? "OK" : "Error";
-              const emoji = result ? Emoji.BLUE_CIRCLE : Emoji.RED_CIRCLE;
+              const resultStr = result ? "OK" : "Error";
               const rule_id = sr.payload.rule_id;
               return (
                 <div key={`check-${idx}`}>
                   <div className="grid grid-cols-6 items-center">
                     <div></div>
                     <div className="col-span-3 text-app-info ml-5">
-                      <span className="text-app-emoji pr-1">{emoji}</span>
                       <span>
-                        {sr.payload.checker} check: {result_str}
+                        {sr.payload.checker} check:{" "}
+                        {result ? (
+                          <span className="text-ctm-blue-500">{resultStr}</span>
+                        ) : (
+                          <span className="text-ctm-orange-400">
+                            {resultStr}
+                          </span>
+                        )}
                       </span>
                     </div>
-                    <div className="col-span-2 text-app-time text-gray-500">
+                    <div className="col-span-2 text-app-time text-muted-foreground">
                       {formatDateTime(ev.r_time)}
                     </div>
                   </div>
                   <div className="grid grid-cols-6 items-center">
                     <div></div>
-                    <div className="col-span-5 text-app-detail ml-9 text-gray-500">
+                    <div className="col-span-5 text-app-detail ml-9 text-muted-foreground">
                       {rule_id}
                     </div>
                   </div>
@@ -150,16 +152,19 @@ const StreamEvent = ({ status, responseInfo }: StreamEventProps) => {
             if (isAgentResultEvent(sr)) {
               const result = sr.payload.result;
               const resultStr = result ? "OK" : "Error";
-              const emoji = result ? Emoji.BLUE_CIRCLE : Emoji.RED_CIRCLE;
               return (
                 <div key={`agent-result-${idx}`}>
                   <div className="grid grid-cols-6 items-center">
                     <div></div>
                     <div className="col-span-3 text-app-info ml-5">
-                      <span className="text-app-emoji pr-1">{emoji}</span>
-                      <span>result: {resultStr}</span>
+                      result:{" "}
+                      {result ? (
+                        <span className="text-ctm-blue-500">{resultStr}</span>
+                      ) : (
+                        <span className="text-ctm-orange-400">{resultStr}</span>
+                      )}
                     </div>
-                    <div className="col-span-2 text-app-time text-gray-500">
+                    <div className="col-span-2 text-app-time text-muted-foreground">
                       {formatDateTime(ev.r_time)}
                     </div>
                   </div>
@@ -172,22 +177,25 @@ const StreamEvent = ({ status, responseInfo }: StreamEventProps) => {
               const payload = sr.payload;
               const { result, total, ok, ng } = payload;
               const resultStr = result ? "OK" : "Error";
-              const emoji = result ? Emoji.BLUE_CIRCLE : Emoji.RED_CIRCLE;
               return (
                 <div key={`test-result-${idx}`}>
                   <div className="grid grid-cols-6 items-center">
                     <div></div>
                     <div className="col-span-3 text-app-info ml-5">
-                      <span className="text-app-emoji pr-1">{emoji}</span>
-                      <span>result: {resultStr}</span>
+                      result:{" "}
+                      {result ? (
+                        <span className="text-ctm-blue-500">{resultStr}</span>
+                      ) : (
+                        <span className="text-ctm-orange-400">{resultStr}</span>
+                      )}
                     </div>
-                    <div className="col-span-2 text-app-time text-gray-500">
+                    <div className="col-span-2 text-app-time text-muted-foreground">
                       {formatDateTime(ev.r_time)}
                     </div>
                   </div>
                   <div className="grid grid-cols-6 items-center">
                     <div></div>
-                    <div className="col-span-5 text-app-detail ml-9 text-gray-500">
+                    <div className="col-span-5 text-app-detail ml-9 text-muted-foreground">
                       <pre>
                         Total: {total} OK: {ok} NG: {ng}
                       </pre>
@@ -207,7 +215,7 @@ const StreamEvent = ({ status, responseInfo }: StreamEventProps) => {
                 <div key={`screenshot-${idx}`}>
                   <div className="grid grid-cols-6 items-center">
                     <div></div>
-                    <div className="col-span-5 text-app-detail ml-9 text-gray-500">
+                    <div className="col-span-5 text-app-detail ml-9 text-muted-foreground">
                       <pre>{filename} created</pre>
                     </div>
                   </div>
@@ -229,7 +237,7 @@ const StreamEvent = ({ status, responseInfo }: StreamEventProps) => {
                       <span className="text-app-emoji pr-2">{emoji}</span>
                       {sr.payload.status}
                     </div>
-                    <div className="col-span-2 text-app-time text-gray-500">
+                    <div className="col-span-2 text-app-time text-muted-foreground">
                       {formatDateTime(ev.r_time)}
                     </div>
                   </div>
@@ -238,17 +246,15 @@ const StreamEvent = ({ status, responseInfo }: StreamEventProps) => {
             }
             // ----- system-error event -----
             if (isSystemErrorEvent(sr)) {
-              const emoji = Emoji.RED_CIRCLE;
               const error = sr.payload.error;
               return (
                 <div key={`system-error-${idx}`}>
                   <div className="grid grid-cols-6 items-center">
                     <div></div>
                     <div className="col-span-3 text-app-info ml-5">
-                      <span className="text-app-emoji pr-1">{emoji}</span>
-                      <span>{error}</span>
+                      <span className="text-ctm-orange-400">{error}</span>
                     </div>
-                    <div className="col-span-2 text-app-time text-gray-500">
+                    <div className="col-span-2 text-app-time text-muted-foreground">
                       {formatDateTime(ev.r_time)}
                     </div>
                   </div>

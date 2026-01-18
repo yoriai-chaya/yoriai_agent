@@ -1,11 +1,17 @@
 import type { Metadata } from "next";
-import { Noto_Sans_JP } from "next/font/google";
 import "./globals.css";
+//import { Noto_Sans_JP } from "next/font/google";
+import { Kosugi_Maru } from "next/font/google";
 
-const noto_sans_jp = Noto_Sans_JP({
-  variable: "--font-noto-sans-jp",
+//const noto_sans_jp = Noto_Sans_JP({
+//  variable: "--font-noto-sans-jp",
+//  subsets: ["latin"],
+//  weight: ["400", "700"],
+//});
+const kosugiMaru = Kosugi_Maru({
   subsets: ["latin"],
-  weight: ["400", "700"],
+  weight: ["400"],
+  display: "swap",
 });
 
 export const metadata: Metadata = {
@@ -19,7 +25,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="ja" style={noto_sans_jp.style}>
+    <html lang="ja" className={kosugiMaru.className}>
       <body>{children}</body>
     </html>
   );

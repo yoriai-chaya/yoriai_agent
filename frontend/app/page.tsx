@@ -3,6 +3,7 @@ import { useEffect, useReducer, useState, useRef } from "react";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import FileUploader from "./FileUploader";
+import UserAvatar from "./UserAvatar";
 import QA from "./QA";
 import ShowPrompt from "./ShowPrompt";
 import StreamDetail from "./StreamDetail";
@@ -93,14 +94,19 @@ export default function App() {
                 <p className="text-app-step my-2">
                   Step {index + 1} - Status: {step.status}
                 </p>
-                {mode === "Manual" && (
-                  <FileUploader
-                    index={index}
-                    status={step.status}
-                    dispatch={dispatch}
-                    setFileInfo={setFileInfo}
-                  />
-                )}
+                <div className="grid grid-cols-6 items-center gap-2 mb-2">
+                  {/* column-A,B */}
+                  <UserAvatar />
+                  {/* column-C,D,E,F */}
+                  {mode === "Manual" && (
+                    <FileUploader
+                      index={index}
+                      status={step.status}
+                      dispatch={dispatch}
+                      setFileInfo={setFileInfo}
+                    />
+                  )}
+                </div>
                 <QA
                   index={index}
                   status={step.status}

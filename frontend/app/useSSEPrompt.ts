@@ -36,7 +36,7 @@ export const useSSEPrompt = ({
         return updated;
       });
     },
-    [setResponseInfo]
+    [setResponseInfo],
   );
 
   // handleGenericEvent
@@ -44,7 +44,7 @@ export const useSSEPrompt = ({
     (
       type: (typeof EventTypes)[keyof typeof EventTypes],
       e: Event,
-      index: number
+      index: number,
     ) => {
       console.log(`- ${type} event -`);
       const data = JSON.parse((e as MessageEvent).data);
@@ -55,7 +55,7 @@ export const useSSEPrompt = ({
       };
       setEvent(sres, index);
     },
-    [setEvent]
+    [setEvent],
   );
 
   // sendPrompt
@@ -156,10 +156,7 @@ export const useSSEPrompt = ({
 
           // Other events (common handling)
           const commonEventTypes = Object.values(EventTypes).filter(
-            (type) =>
-              type !== EventTypes.STARTED &&
-              type !== EventTypes.DONE &&
-              type !== EventTypes.SYSTEM_ERROR
+            (type) => type !== EventTypes.STARTED && type !== EventTypes.DONE,
           );
           commonEventTypes.forEach((type) => {
             es.addEventListener(type, (e) => {
@@ -187,7 +184,7 @@ export const useSSEPrompt = ({
         return Promise.reject(new Error(message));
       }
     },
-    [API_BASE, dispatch, handleGenericEvent, setEvent, setResponseInfo]
+    [API_BASE, dispatch, handleGenericEvent, setEvent, setResponseInfo],
   );
 
   return { sendPrompt };

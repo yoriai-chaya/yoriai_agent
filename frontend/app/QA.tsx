@@ -51,7 +51,7 @@ const QA = ({
           {/* column-A */}
           <div></div>
           {/* column-B */}
-          <div className="text-gray-500 text-app-label">fname:</div>
+          <div className="text-muted-foreground text-app-label">fname:</div>
           {/* column-C,D,E */}
           <div className="col-span-3 text-app-info">{fileInfo.filename}</div>
           {/* column-F */}
@@ -68,9 +68,9 @@ const QA = ({
           {/* column-A */}
           <div></div>
           {/* column-B */}
-          <div className="text-gray-500 text-app-label">mtime:</div>
+          <div className="text-muted-foreground text-app-label">mtime:</div>
           {/* column-C,D,E */}
-          <div className="col-span-3 text-app-time text-gray-700">
+          <div className="col-span-3 text-app-time text-muted-foreground">
             {formatDateTime(fileInfo.mtime)}
           </div>
           {/* column-F */}
@@ -82,7 +82,7 @@ const QA = ({
           {/* column-B,C,D,E */}
           <div className="col-span-4 text-app-info">
             {errorMessage && (
-              <div className="text-red-500 mt-2">{errorMessage}</div>
+              <div className="text-ctm-orange-400 mt-2">{errorMessage}</div>
             )}
           </div>
           {/* column-F */}

@@ -17,9 +17,9 @@ interface TreeViewProps {
 const statusToEmoji = (st?: AutoRunFileStatus) => {
   switch (st) {
     case "running":
-      return Emoji.BLUE_CIRCLE;
-    case "success":
       return Emoji.GREEN_CIRCLE;
+    case "success":
+      return Emoji.BLUE_CIRCLE;
     case "failed":
       return Emoji.RED_CIRCLE;
     case "skipped":
