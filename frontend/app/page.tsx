@@ -20,6 +20,7 @@ const initialResponseInfo: ResponseInfo[] = [];
 
 export default function App() {
   const [state, dispatch] = useReducer(reducer, initialState);
+  const [nextStepIndex, setNextStepIndex] = useState(0);
   const [fileInfo, setFileInfo] = useState<FileInfo[]>(initialFileInfo);
   const [responseInfo, setResponseInfo] =
     useState<ResponseInfo[]>(initialResponseInfo);
@@ -43,6 +44,10 @@ export default function App() {
       if (prev.length >= state.steps.length) return prev;
       return [...prev, { filename: "", content: "", mtime: new Date(0) }];
     });
+  }, [state.steps.length]);
+  useEffect(() => {
+    const next = Math.max(0, state.steps.length - 1);
+    setNextStepIndex(next);
   }, [state.steps.length]);
 
   const rightPanel = useRef<HTMLDivElement>(null);
@@ -82,6 +87,8 @@ export default function App() {
                 dispatch={dispatch}
                 setFileInfo={setFileInfo}
                 setResponseInfo={setResponseInfo}
+                nextStepIndex={nextStepIndex}
+                setNextStepIndex={setNextStepIndex}
               />
             </div>
           )}

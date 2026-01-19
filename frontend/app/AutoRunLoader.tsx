@@ -25,6 +25,8 @@ interface AutoRunLoaderProps {
   dispatch: React.Dispatch<Action>;
   setFileInfo: React.Dispatch<React.SetStateAction<FileInfo[]>>;
   setResponseInfo: React.Dispatch<React.SetStateAction<ResponseInfo[]>>;
+  nextStepIndex: number;
+  setNextStepIndex: React.Dispatch<React.SetStateAction<number>>;
 }
 
 const AutoRunLoader: React.FC<AutoRunLoaderProps> = ({
@@ -33,6 +35,8 @@ const AutoRunLoader: React.FC<AutoRunLoaderProps> = ({
   dispatch,
   setFileInfo,
   setResponseInfo,
+  nextStepIndex,
+  setNextStepIndex,
 }) => {
   const [autorunId, setAutorunId] = useState("");
   const [inputAutorunId, setInputAutorunId] = useState("");
@@ -49,7 +53,6 @@ const AutoRunLoader: React.FC<AutoRunLoaderProps> = ({
   const [currentIndex, setCurrentIndex] = useState<number>(-1);
   const [skipOnCont, setSkipOnCont] = useState(false);
   const [stopRequested, setStopRequested] = useState(false);
-  const [nextStepIndex, setNextStepIndex] = useState<number>(0);
   // for future : currentStepIndex
   const [, setCurrentStepIndex] = useState<number>(-1);
 
@@ -60,7 +63,7 @@ const AutoRunLoader: React.FC<AutoRunLoaderProps> = ({
   const autoRunStateTextClass = useMemo(() => {
     switch (autoRunState) {
       case "pause":
-        return "text-ctm-yellow-400";
+        return "text-ctm-yellow-200";
       case "finished":
         return "text-ctm-blue-500";
       case "failed":
@@ -133,11 +136,11 @@ const AutoRunLoader: React.FC<AutoRunLoaderProps> = ({
       dispatch({ type: "RESET" });
       setFileInfo(initialFileInfo);
       setResponseInfo(initialResponseInfo);
+      setNextStepIndex(0);
 
       // auto-run internal state reset
       setAutoRunState("idle");
       setCurrentIndex(-1);
-      setNextStepIndex(0);
       pauseRequestRef.current = false;
       setStopRequested(false);
     } catch (e) {
@@ -404,14 +407,14 @@ const AutoRunLoader: React.FC<AutoRunLoaderProps> = ({
               {autoRunState}
             </span>
             {files.length > 0 && (
-              <>
+              <span className={`${autoRunStateTextClass}`}>
                 ,{" "}
                 <span>
                   {currentIndex >= 0
                     ? `${currentIndex + 1}/${files.length}`
                     : "-"}
                 </span>
-              </>
+              </span>
             )}
           </div>
         )}
