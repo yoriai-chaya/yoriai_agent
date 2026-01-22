@@ -32,17 +32,19 @@ async def wait_for_screenshot_update(
 
     Returns:
         True  : updated within timeout
-        False : timeout
+        False : timeout or file not found
     """
     start = time.monotonic()
+    last_mtime: float | None = None
     while True:
         if path.exists():
             mtime = path.stat().st_mtime
+            last_mtime = mtime
             if mtime > before_mtime:
                 return True
         if time.monotonic() - start >= timeout_sec:
             return False
-        logger.debug(f"mtime: {mtime}, before_mtime: {before_mtime}")
+        logger.debug(f"mtime: {last_mtime}, before_mtime: {before_mtime}")
         await asyncio.sleep(interval_sec)
 
 
@@ -105,6 +107,9 @@ async def handler_run_tests(
                 screenshot_path = (
                     output_dir / results_dir / screenshot_dir / ss.filename
                 )
+                if not screenshot_path.exists():
+                    logger.warning(f"Screenshot file does not exist: {screenshot_path}")
+                    continue
                 logger.debug(f"Waiting for screenshot update: {screenshot_path}")
                 updated = await wait_for_screenshot_update(
                     path=screenshot_path,

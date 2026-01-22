@@ -56,7 +56,7 @@ settings = get_settings()
 sessions: Dict[str, str] = {}
 
 # FastAPI Main
-logger.info("Yori-AI start")
+logger.info("===== Robin start =====")
 app = FastAPI()
 app.add_middleware(
     CORSMiddleware,
