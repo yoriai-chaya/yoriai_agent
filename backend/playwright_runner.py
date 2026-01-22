@@ -1,5 +1,6 @@
 import subprocess
 from pathlib import Path
+from typing import List, Union
 
 from agents import RunContextWrapper
 
@@ -13,7 +14,7 @@ def run_playwright(
     test_dir: str,
     test_file: str,
     project: str,
-    screenshot_file: str,
+    screenshot_files: Union[str, List[str]],
 ) -> RunPlaywrightFunctionResult:
     logger.debug("run_playwright called")
 
@@ -25,7 +26,9 @@ def run_playwright(
     logger.debug(f"test_file: {test_file}")
     screenshot_dir: Path = ctx.context.screenshot_dir
     logger.debug(f"screenshot_dir: {screenshot_dir}")
-    logger.debug(f"screenshot_file: {screenshot_file}")
+    logger.debug(f"screenshot_files: {screenshot_files}")
+    if isinstance(screenshot_files, str):
+        screenshot_files = [screenshot_files]
 
     ctx.context.test_file = test_file
     test_path = output_dir / test_dir / test_file
@@ -52,19 +55,21 @@ def run_playwright(
     screenshot_updated = False
     if project:
         command.append(f"--project={project}")
-    screenshot_path = output_dir / results_dir / screenshot_dir / screenshot_file
-    logger.debug(f"screenshot_path: {screenshot_path}")
-    if not screenshot_path.is_file():
-        command.append("--update-snapshots")
-        screenshot_updated = True
-    logger.debug(f"command: {command}")
-    relative_url = f"/artifacts/results/screenshot/{screenshot_file}"
-    logger.debug(f"relative_url: {relative_url}")
-    ctx.context.screenshots.append(
-        ScreenshotInfo(
-            spec=test_file, filename=screenshot_file, relative_url=relative_url
+
+    for screenshot_file in screenshot_files:
+        screenshot_path = output_dir / results_dir / screenshot_dir / screenshot_file
+        logger.debug(f"screenshot_path: {screenshot_path}")
+        if not screenshot_path.is_file():
+            command.append("--update-snapshots")
+            screenshot_updated = True
+        logger.debug(f"command: {command}")
+        relative_url = f"/artifacts/results/screenshot/{screenshot_file}"
+        logger.debug(f"relative_url: {relative_url}")
+        ctx.context.screenshots.append(
+            ScreenshotInfo(
+                spec=test_file, filename=screenshot_file, relative_url=relative_url
+            )
         )
-    )
 
     # Execute npx playwright command
     flg_404 = False

@@ -171,7 +171,7 @@ def clean_app_booking(paths: Dict[str, Path]) -> None:
 
 
 def clean_components(paths: Dict[str, Path]) -> None:
-    logger.info("== Clean output/app/components/*.tsx ==")
+    logger.info("== Clean output/app/components ==")
     compo_path = paths["app_path"] / "components"
     if not compo_path.is_dir():
         logger.warning(
@@ -179,15 +179,8 @@ def clean_components(paths: Dict[str, Path]) -> None:
         )
         return
 
-    tsx_files = list(compo_path.glob("*.tsx"))
-    if not tsx_files:
-        logger.warning(f"[CLEAN_COMPONETS] no *.tsx files found in {compo_path}.")
-        return
-
-    for tsx in tsx_files:
-        logger.log("TOOL", f"[CLEAN_COMPONENTS] Remove: {tsx}")
-        tsx.unlink()
-    return
+    logger.log("TOOL", f"[CLEAN_COMPONENTS] Remove directory recursively: {compo_path}")
+    shutil.rmtree(compo_path)
 
 
 def clean_public_hotel(paths: Dict[str, Path]) -> None:
@@ -221,7 +214,7 @@ def clean_tests(paths: Dict[str, Path]) -> None:
 
 
 def clean_results(paths: Dict[str, Path]) -> None:
-    logger.info("== Clean output/results/*.json, screenshot/*.png ==")
+    logger.info("== Clean output/results/*.json, screenshot ==")
     results_dir = paths["results_path"]
 
     # remove output/results/*.json
@@ -239,28 +232,10 @@ def clean_results(paths: Dict[str, Path]) -> None:
         logger.warning(f"[CLEAN_RESULTS] screenshot dir not found in {results_dir}")
         return
     else:
-        png_files = list(screenshot_dir.glob("*.png"))
-        if not png_files:
-            logger.warning(f"[CLEAN_RESULTS] no *.png files found in {screenshot_dir}")
-        else:
-            for png_file in png_files:
-                logger.log("TOOL", f"[CLEAN_RESULTS] Remove: {png_file}")
-                png_file.unlink()
-
-    # remove output/results/evidence/*.png
-    evidence_dir = paths["results_path"] / "evidence"
-    if not evidence_dir.is_dir():
-        logger.warning(f"[CLEAN_RESULTS] evidence dir not found in {results_dir}")
-        return
-    else:
-        png_files = list(evidence_dir.glob("*.png"))
-        if not png_files:
-            logger.warning(f"[CLEAN_RESULTS] no *.png files found in {evidence_dir}")
-        else:
-            for png_file in png_files:
-                logger.log("TOOL", f"[CLEAN_RESULTS] Remove: {png_file}")
-                png_file.unlink()
-    return
+        logger.log(
+            "TOOL", f"[CLEAN_RESULTS] Remove directory recursively: {screenshot_dir}"
+        )
+        shutil.rmtree(screenshot_dir)
 
 
 def main() -> int:

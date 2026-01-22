@@ -226,7 +226,9 @@ def get_screenshot(filename: str):
     logger.debug(f"path: {path}")
     if not path.exists():
         raise HTTPException(404)
-    return FileResponse(path, media_type="image/png")
+    return FileResponse(
+        path, media_type="image/png", headers={"Cache-Control": "no-store"}
+    )
 
 
 @app.get(

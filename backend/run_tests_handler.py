@@ -1,3 +1,7 @@
+import asyncio
+import time
+from pathlib import Path
+
 from agents import Runner
 
 from agent_logger import AgentLogger
@@ -10,9 +14,36 @@ from base import (
     SystemError,
     TestScreenshotPayload,
 )
+from common import archive
 from custom_agents import get_run_tests_agent
 from eval_tests import eval_test_results
 from logger import logger
+
+
+async def wait_for_screenshot_update(
+    path: Path,
+    before_mtime: float,
+    timeout_sec: float = 5.0,
+    interval_sec: float = 0.5,
+) -> bool:
+    """
+    Wait until screenshot file is updated (mtime > before_mtime)
+    before_mtime: playwright_report_file creation time
+
+    Returns:
+        True  : updated within timeout
+        False : timeout
+    """
+    start = time.monotonic()
+    while True:
+        if path.exists():
+            mtime = path.stat().st_mtime
+            if mtime > before_mtime:
+                return True
+        if time.monotonic() - start >= timeout_sec:
+            return False
+        logger.debug(f"mtime: {mtime}, before_mtime: {before_mtime}")
+        await asyncio.sleep(interval_sec)
 
 
 async def handler_run_tests(
@@ -66,7 +97,35 @@ async def handler_run_tests(
                 final_payload = DonePayload(
                     status=DoneStatus.FAILED, message="RunTests failed"
                 )
+            output_dir = context.output_dir
+            results_dir = context.results_dir
+            screenshot_dir = Path(context.screenshot_dir)
+            before_mtime = context.before_mtime
             for ss in context.screenshots:
+                screenshot_path = (
+                    output_dir / results_dir / screenshot_dir / ss.filename
+                )
+                logger.debug(f"Waiting for screenshot update: {screenshot_path}")
+                updated = await wait_for_screenshot_update(
+                    path=screenshot_path,
+                    before_mtime=before_mtime,
+                    timeout_sec=5.0,
+                    interval_sec=0.5,
+                )
+                if not updated:
+                    error_msg = f"Screenshot not updated within timeout: {ss.filename}"
+                    logger.error(error_msg)
+                    error_payload = SystemError(
+                        error="ScreenshotTimeout", detail=error_msg
+                    )
+                    yield await sse_event(
+                        EventType.SYSTEM_ERROR, error_payload.model_dump()
+                    )
+                    final_payload = DonePayload(
+                        status=DoneStatus.FAILED, message="Screenshot update timeout"
+                    )
+                    yield await sse_event(EventType.DONE, final_payload.model_dump())
+                    return
                 payload = TestScreenshotPayload(
                     spec=ss.spec,
                     filename=ss.filename,
@@ -74,6 +133,13 @@ async def handler_run_tests(
                     updated=final.screenshot_updated,
                 )
                 logger.debug(f"payload: {payload}")
+                src_dir = output_dir / results_dir / screenshot_dir
+                src_file = ss.filename
+                stepid_dir = context.stepid_dir
+                dir = Path("./playwright")
+                archive(
+                    src_dir=src_dir, src_file=src_file, stepid_dir=stepid_dir, dir=dir
+                )
                 yield await sse_event(EventType.TEST_SCREENSHOT, payload.model_dump())
 
     except Exception as e:

@@ -2,7 +2,7 @@ import os
 import shutil
 import sys
 from pathlib import Path
-from typing import List
+from typing import List, Union
 
 from agents import (
     Agent,
@@ -152,7 +152,7 @@ async def run_tests(
     test_dir: str,
     test_file: str,
     project: str,
-    screenshot_file: str,
+    screenshot_files: Union[str, List[str]],
 ) -> RunPlaywrightFunctionResult:
     """Run tests using playwright.
 
@@ -160,7 +160,7 @@ async def run_tests(
         test_dir: directory containing test files
         test_file: test file name
         project: project name
-        screenshot_file: screenshot file name
+        screenshot_files: screenshot file name(s) (single/multiple)
 
     Return:
         RunPlaywrightFunctionResult: execute command result
@@ -172,7 +172,7 @@ async def run_tests(
     logger.debug(f"test_dir: {test_dir}")
     logger.debug(f"test_file: {test_file}")
     logger.debug(f"project: {project}")
-    logger.debug(f"screenshot_file: {screenshot_file}")
+    logger.debug(f"screenshot_files: {screenshot_files}")
 
     # Run Tests
     result = run_playwright(
@@ -180,7 +180,7 @@ async def run_tests(
         test_dir=test_dir,
         test_file=test_file,
         project=project,
-        screenshot_file=screenshot_file,
+        screenshot_files=screenshot_files,
     )
     logger.debug(f"result: {result}")
 

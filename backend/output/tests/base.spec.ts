@@ -46,13 +46,10 @@ async function updateInfoFile(data: Record<string, unknown>) {
   }
   const merged = { ...current, ...data };
   await fs.writeFile(info_file, JSON.stringify(merged, null, 2));
-  console.log(`Updated info file: ${JSON.stringify(data)}`);
 }
 
 export const test = base.extend<{ page: Page }>({
   page: async ({ browser, baseURL }, run, testInfo) => {
-    console.log("base: page fixture called");
-
     let finalURL = baseURL ?? base_url;
     if (baseURL?.startsWith("/")) {
       finalURL = `${base_url}${baseURL}`;
@@ -83,17 +80,14 @@ export const test = base.extend<{ page: Page }>({
 });
 
 test.beforeAll(async () => {
-  console.log("base: beforeAll called");
   await ensureDirs();
   const startTime = formatDateTime(new Date());
   await updateInfoFile({ startTime });
-  console.log(`Recorded startTime: ${startTime}`);
 });
 
 test.afterAll(async () => {
   const endTime = formatDateTime(new Date());
   await updateInfoFile({ endTime });
-  console.log(`Recorded endTime: ${endTime}`);
 });
 
 export const expect = baseExpect;
