@@ -52,6 +52,12 @@ class IsCodeCheckError(StrEnum):
     BUILD_ERROR = "BuildError"
 
 
+class LoopAction(StrEnum):
+    NORMAL = "normal"
+    CONTINUE = "continue"
+    BREAK = "break"
+
+
 # Model Definitions
 class PromptRequest(BaseModel):
     prompt: str
@@ -227,6 +233,18 @@ class FileNode(BaseModel):
     type: Literal["file"]
     name: str
     data: AutoRunFilelist
+
+
+class SSEPayload(BaseModel):
+    event: EventType
+    payload: dict[str, Any]
+
+
+class StepResult(BaseModel):
+    action: LoopAction
+    sse_events: list[SSEPayload] = []
+    next_prompt: str | None = None
+    final_payload: DonePayload | None = None
 
 
 TreeNode = Union[DirectoryNode, FileNode]

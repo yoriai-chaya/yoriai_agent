@@ -10,7 +10,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 
 from base import (
-    DebugMode,
     DonePayload,
     DoneStatus,
     EventType,
@@ -89,18 +88,6 @@ async def create_session(request: PromptRequest):
     sessions[session_id] = request.prompt
     logger.debug(f"session_id: {session_id}")
     return JSONResponse({"session_id": session_id})
-
-
-# for Debug
-async def wait_for_console_input() -> DebugMode:
-    loop = asyncio.get_event_loop()
-    prompt = 'Enter cmd - "e":end, "s":skip agent, "c": continue, "l": load code : '
-    user_input = await loop.run_in_executor(None, input, prompt)
-    cmd = user_input.strip().lower()
-    for mode in DebugMode:
-        if cmd == mode.value:
-            return mode
-    return DebugMode.END
 
 
 # Main Service
@@ -202,9 +189,7 @@ async def stream_service_get(session_id: str):
             return
 
         logger.trace(f"handler call: resolved_prompt: {resolved_prompt}")
-        async for event in handler(
-            resolved_prompt, context, settings, sse_event, wait_for_console_input
-        ):
+        async for event in handler(resolved_prompt, context, settings, sse_event):
             yield event
 
     headers = {

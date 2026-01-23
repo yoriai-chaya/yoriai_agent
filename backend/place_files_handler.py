@@ -1,3 +1,5 @@
+from typing import Awaitable, Callable
+
 from agents import ItemHelpers, Runner
 
 from agent_logger import AgentLogger
@@ -8,14 +10,21 @@ from base import (
     DonePayload,
     DoneStatus,
     EventType,
+    LocalContext,
     SystemError,
 )
+from config import Settings
 from custom_agents import get_place_files_agent
 from logger import logger
 
+SSEEventCallable = Callable[[str, dict], Awaitable[str]]
+
 
 async def handle_place_files(
-    prompt: str, context, settings, sse_event, wait_for_console_input
+    prompt: str,
+    context: LocalContext,
+    settings: Settings,
+    sse_event: SSEEventCallable,
 ):
     category = context.category
     logger.info(f"[{category}]: PlaceFiles Handler Called")

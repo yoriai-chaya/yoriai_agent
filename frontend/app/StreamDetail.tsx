@@ -116,7 +116,7 @@ const StreamDetail = ({ status, responseInfo }: StreamDetailProps) => {
                         <div className="text-app-detail pl-4">
                           rule: {rule_id}
                         </div>
-                        <div className="text-app-detail pl-4">
+                        <div className="text-app-detail pl-4 break-all">
                           detail: {detail}
                         </div>
                       </>
@@ -143,7 +143,7 @@ const StreamDetail = ({ status, responseInfo }: StreamDetailProps) => {
                       <>
                         <span>result: </span>
                         <span className="text-ctm-orange-400">{resultStr}</span>
-                        <div className="text-app-detail pl-4">
+                        <div className="text-app-detail pl-4 break-all">
                           detail: {error_detail}
                         </div>
                       </>
@@ -178,7 +178,7 @@ const StreamDetail = ({ status, responseInfo }: StreamDetailProps) => {
                       </span>
                       <div>Name: {name}</div>
                       <div>File: {file}</div>
-                      <div>Error detail: {detail}</div>
+                      <div className="break-all">Error detail: {detail}</div>
                       {specs && specs.length > 0 && (
                         <div className="mt-1">
                           <div className="font-semibold">Test Specs:</div>
@@ -281,7 +281,7 @@ const StreamDetail = ({ status, responseInfo }: StreamDetailProps) => {
               const detail = sr.payload.detail;
               return (
                 <div key={`system-error-${idx}`}>
-                  <div className="text-ctm-orange-400 text-app-detail pl-2">
+                  <div className="text-ctm-orange-400 text-app-detail pl-2 break-all">
                     <div>{error}</div>
                     <div>{detail}</div>
                   </div>

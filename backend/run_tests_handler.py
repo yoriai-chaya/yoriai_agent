@@ -1,6 +1,7 @@
 import asyncio
 import time
 from pathlib import Path
+from typing import Awaitable, Callable
 
 from agents import Runner
 
@@ -10,14 +11,18 @@ from base import (
     DonePayload,
     DoneStatus,
     EventType,
+    LocalContext,
     RunPlaywrightFunctionResult,
     SystemError,
     TestScreenshotPayload,
 )
 from common import archive
+from config import Settings
 from custom_agents import get_run_tests_agent
 from eval_tests import eval_test_results
 from logger import logger
+
+SSEEventCallable = Callable[[str, dict], Awaitable[str]]
 
 
 async def wait_for_screenshot_update(
@@ -49,7 +54,10 @@ async def wait_for_screenshot_update(
 
 
 async def handler_run_tests(
-    prompt: str, context, settings, sse_event, wait_for_console_input
+    prompt: str,
+    context: LocalContext,
+    settings: Settings,
+    sse_event: SSEEventCallable,
 ):
     category = context.category
     logger.info(f"[{category}] : Run Tests Handler started")
