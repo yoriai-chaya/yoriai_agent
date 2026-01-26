@@ -15,6 +15,7 @@ from pydantic import ValidationError
 
 from base import (
     AgentResult,
+    BuildErrorAnalyzerResult,
     CodeCheckResult,
     CodeGenResponse,
     CodeSaveData,
@@ -207,6 +208,7 @@ _code_gen_agent: Agent[LocalContext] | None = None
 _code_check_agent: Agent[LocalContext] | None = None
 _place_files_agent: Agent[LocalContext] | None = None
 _run_tests_agent: Agent[LocalContext] | None = None
+_build_error_analyzer_agent: Agent[LocalContext] | None = None
 
 
 def get_code_gen_agent() -> Agent[LocalContext]:
@@ -297,3 +299,29 @@ def get_run_tests_agent() -> Agent[LocalContext]:
     )
     logger.debug("get_run_tests_agent return")
     return _run_tests_agent
+
+
+def get_build_error_analyzer_agent() -> Agent[LocalContext]:
+    logger.debug("get_build_error_analyzer_agent called")
+
+    global _build_error_analyzer_agent
+    if _build_error_analyzer_agent is not None:
+        logger.debug("get_build_error_analyzer_agent return")
+        return _build_error_analyzer_agent
+
+    agents_prompt = load_agents_prompt()
+    instructions_build_error_analyzer = require_str(
+        data=agents_prompt, key="instructions_build_error_analyzer"
+    )
+    logger.debug(
+        f"instructions_build_error_analyzer: {instructions_build_error_analyzer}"
+    )
+
+    _build_error_analyzer_agent = Agent[LocalContext](
+        name="AnalyzerAgent",
+        instructions=instructions_build_error_analyzer,
+        model=model,
+        output_type=BuildErrorAnalyzerResult,
+    )
+    logger.debug("get_build_error_analyzer_agent return")
+    return _build_error_analyzer_agent

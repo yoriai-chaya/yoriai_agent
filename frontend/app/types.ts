@@ -50,6 +50,14 @@ export type TestScreenshotPayload = {
   updated: boolean;
 };
 
+export type BuildErrorAnalyzerPayload = {
+  summary: string;
+  root_cause: string;
+  files_to_fix: string[];
+  fix_policy: string[];
+  confidence: "probable" | "likely" | "possible" | "unclear";
+};
+
 export type StreamResponse =
   | {
       event: "started";
@@ -68,7 +76,11 @@ export type StreamResponse =
       payload: { result: boolean; error_detail: string };
     }
   | { event: "test_result"; payload: TestResultPayload }
-  | { event: "test_screenshot"; payload: TestScreenshotPayload };
+  | { event: "test_screenshot"; payload: TestScreenshotPayload }
+  | {
+      event: "analyzer_result";
+      payload: BuildErrorAnalyzerPayload;
+    };
 
 export type ResponseEvent = {
   s_res: StreamResponse;
@@ -90,6 +102,7 @@ export const EventTypes = {
   TEST_RUN: "test_run",
   TEST_RESULT: "test_result",
   TEST_SCREENSHOT: "test_screenshot",
+  ANALYZER_RESULT: "analyzer_result",
 } as const;
 
 export type CheckResultEvent = {

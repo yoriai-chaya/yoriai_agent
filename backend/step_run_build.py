@@ -2,14 +2,11 @@ from base import (
     DonePayload,
     DoneStatus,
     EventType,
-    IsCodeCheckError,
     LocalContext,
-    LoopAction,
     SSEPayload,
     StepResult,
 )
 from config import Settings
-from create_prompt import create_prompt_for_builderror
 from logger import logger
 from run_build_cmd import run_build
 
@@ -24,18 +21,9 @@ async def run_build_step(
     build_result = await run_build(context, settings)
 
     if not build_result.result:
-        if build_result.abort_flg:
-            logger.error(f"[run_build] Build failed: {build_result.detail}")
-            return StepResult(
-                action=LoopAction.BREAK,
-                final_payload=DonePayload(
-                    status=DoneStatus.FAILED,
-                    message="Build failed",
-                ),
-            )
-
-        context.is_code_check_error = IsCodeCheckError.BUILD_ERROR
-
+        # Case-1: The build command could not be executed due to a system-level error.
+        # Case-2: The build command completed, but the build output contains errors.
+        logger.error(f"[run_build] Build failed: {build_result.detail}")
         sse_events.append(
             SSEPayload(
                 event=EventType.CHECK_RESULT,
@@ -47,29 +35,16 @@ async def run_build_step(
                 },
             )
         )
-
-        if context.response is None:
-            logger.error("context.response is None at build error")
-            return StepResult(
-                action=LoopAction.BREAK,
-                final_payload=DonePayload(
-                    status=DoneStatus.FAILED,
-                    message="Internal error occurred",
-                ),
-            )
-
-        re_prompt = create_prompt_for_builderror(
-            context.response.code,
-            build_result.detail or "",
-        )
-
         return StepResult(
-            action=LoopAction.CONTINUE,
+            result=build_result,
             sse_events=sse_events,
-            next_prompt=re_prompt,
+            final_payload=DonePayload(
+                status=DoneStatus.FAILED,
+                message="Build failed",
+            ),
         )
 
-    context.is_code_check_error = IsCodeCheckError.NO_ERROR
+    # Case-3: The build command completed successfully with no errors detected.
     sse_events.append(
         SSEPayload(
             event=EventType.CHECK_RESULT,
@@ -81,5 +56,4 @@ async def run_build_step(
             },
         )
     )
-
-    return StepResult(action=LoopAction.BREAK, sse_events=sse_events)
+    return StepResult(result=build_result, sse_events=sse_events)

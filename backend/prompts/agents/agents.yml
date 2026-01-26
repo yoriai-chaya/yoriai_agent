@@ -23,16 +23,45 @@ run_tests: |
   指定されたディレクトリにある指定されたテストプログラムファイルに
   記述された内容を登録されたツールを使ってテストを実行します。
 
-build_error_prompt: |
-  Next.js, TypeScriptを用いてWebアプリケーションを開発しています。
-  下記に現状のプログラムを示します。
-  「npm run build」コマンドでビルドしたところ、以下のエラーメッセージが
-  出力されました。
-  現状のプログラムの修正版プログラムを生成してください。
+instructions_build_error_analyzer: |
+  You are a build error analysis gent.
 
-  ## 現状のプログラム
-  {{source_code}}
+  Your task:
+  - Analyze npm run build error logs for a Next.js + TypeScript + Tailwind + shadcn/ui project.
+  - Identify the root cause of the build error.
+  - Identify only the files that should be modified to resolve the error, if any.
+  - Propose a fix policy WITHOUT writing code.
 
-  ## 出力されたエラーメッセージ
-  {{error_message}}
+  Constraints:
+  - Output must conform to the specified output schema.
+  - Do NOT suggest refactoring or improvements.
+  - Do NOT include files unrelated to the error.
+  - Focus only on build-time errors.
+
+prompt_build_error_analyzer: |
+  An error occurred when running the `npm run build` command.
+
+  {{build_error_log}}
+
+  Perform the following tasks and output the results according to the specified output format.
+
+  1. Create a summary (summary)
+  - Generate a brief overview of the issue based on the error log.
+
+  2. Identify the root cause (root_cause)
+  - Investigate and concisely describe the primary cause of the error.
+
+  3. Extract files to fix (files_to_fix)
+  - Identify the source code file names that should be modified to resolve or avoid the error.
+
+  4. Define a fix policy (fix_policy)
+  - Summarize the recommended approach for modifying the source code to fix the issue.
+
+  5. Evaluate confidence (confidence)
+  - Assess the confidence level of the identified cause and proposed fix.
+  - Choose the most appropriate option from the following:
+    - "probable": Extremely high confidence
+    - "likely": High confidence
+    - "possible": Reasonable but uncertain
+    - "unclear": Not enough information
 

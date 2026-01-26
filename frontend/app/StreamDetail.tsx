@@ -4,9 +4,20 @@ import {
   ResponseInfo,
   EventTypes,
   StreamResponse,
+  BuildErrorAnalyzerPayload,
 } from "./types";
 import Image from "next/image";
 import Markdown from "./Markdown";
+
+const confidenceColorMap: Record<
+  BuildErrorAnalyzerPayload["confidence"],
+  string
+> = {
+  probable: "text-ctm-blue-500",
+  likely: "text-ctm-green-500",
+  possible: "text-ctm-yellow-200",
+  unclear: "text-ctm-orange-400",
+};
 
 interface StreamDetailProps {
   status: string;
@@ -56,6 +67,14 @@ function isTestScreenshotEvent(
   { event: typeof EventTypes.TEST_SCREENSHOT }
 > {
   return event.event === EventTypes.TEST_SCREENSHOT;
+}
+function isAnalyzerResultEvent(
+  event: StreamResponse,
+): event is Extract<
+  StreamResponse,
+  { event: typeof EventTypes.ANALYZER_RESULT }
+> {
+  return event.event === EventTypes.ANALYZER_RESULT;
 }
 
 // StreamDetail Function
@@ -252,6 +271,56 @@ const StreamDetail = ({ status, responseInfo }: StreamDetailProps) => {
                       className="mt-1 border rounded max-w-full"
                     />
                   </a>
+                </div>
+              );
+            }
+
+            // ----- analyzer_result event -----
+            if (isAnalyzerResultEvent(sr)) {
+              const {
+                summary,
+                root_cause,
+                files_to_fix,
+                fix_policy,
+                confidence,
+              } = sr.payload;
+              const colorClass = confidenceColorMap[confidence];
+              return (
+                <div key={`analyzer-${idx}`}>
+                  <div className="grid grid-cols-6 items-center">
+                    <div></div>
+                    <div className="col-span-5 text-app-detail ml-9 text-muted-foreground">
+                      <div>
+                        <span className="font-semibold text-foreground">
+                          Summary:
+                        </span>{" "}
+                        {summary}
+                      </div>
+                      <div>
+                        <span>Root cause:</span> {root_cause}
+                      </div>
+                      <div>
+                        <span>Files to fix:</span>
+                        <ul className="list-disc list-inside ml-2">
+                          {files_to_fix.map((f) => (
+                            <li key={f}>{f}</li>
+                          ))}
+                        </ul>
+                      </div>
+                      <div>
+                        <span>Fix policy:</span>
+                        <ul className="list-disc list-inside ml-2">
+                          {fix_policy.map((p, i) => (
+                            <li key={i}>{p}</li>
+                          ))}
+                        </ul>
+                      </div>
+                      <pre>
+                        confidence:{" "}
+                        <span className={colorClass}>{confidence}</span>
+                      </pre>
+                    </div>
+                  </div>
                 </div>
               );
             }

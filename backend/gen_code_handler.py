@@ -16,7 +16,6 @@ from base import (
     DonePayload,
     DoneStatus,
     EventType,
-    IsCodeCheckError,
     LocalContext,
     LoopAction,
     SystemError,
@@ -27,6 +26,7 @@ from logger import logger
 from step_check_code import check_code_step
 from step_gen_code import gen_code_step
 from step_run_build import run_build_step
+from step_run_rebuild import run_rebuild_step
 
 SSEEventCallable = Callable[[str, dict], Awaitable[str]]
 
@@ -75,6 +75,7 @@ async def handle_gen_code(
         # =========================
         # Code Generation Loop
         # =========================
+        success = False
         for i in range(settings.code_gen_retry):
             logger.debug(f"Code Gen Loop [{i}]")
 
@@ -117,8 +118,6 @@ async def handle_gen_code(
                 step = await gen_code_step(
                     final_prompt=final_prompt,
                     context=context,
-                    retry_index=i,
-                    retry_limit=settings.code_gen_retry,
                 )
 
                 for ev in step.sse_events:
@@ -159,82 +158,77 @@ async def handle_gen_code(
 
                 for ev in step.sse_events:
                     yield await sse_event(ev.event, ev.payload)
-            else:
-                logger.debug("[check_gen_code] Skipping check_gen_code()")
-
-            # ---------------------------------------------
-            # 6. CP3: Debug Checkpoint - before run_build()
-            # ---------------------------------------------
-            logger.debug(f"[CP3] Current debug_mode: {debug_mode}")
-            if settings.debug:
-                debug_mode = await debug_checkpoint(
-                    cp_name="CP3",
-                    current_mode=debug_mode,
-                    context=context,
-                )
-                if debug_mode == DebugMode.END:
-                    logger.debug("[CP3] Exiting loop")
-                    break
-
-            # ---------------------------------------------
-            # 7. LJ1: Loop Judge for ESLint check result
-            # ---------------------------------------------
-            logger.debug(
-                f"[Loop] context.is_code_check_error: {context.is_code_check_error}"
-            )
-
-            if context.is_code_check_error == IsCodeCheckError.ESLINT_ERROR:
-                logger.debug("[Loop] Retry due to ESLint error")
-                continue
-
-            # -------------------
-            # 8. Call run_build()
-            # -------------------
-            logger.debug(f"[run_build] context.build_check: {context.build_check}")
-
-            if context.build_check and debug_mode != DebugMode.SKIP_AGENT:
-                logger.debug("run_build_step called")
-                step = await run_build_step(
-                    context=context,
-                    settings=settings,
-                )
-
-                for ev in step.sse_events:
-                    yield await sse_event(ev.event, ev.payload)
-
-                if step.next_prompt:
-                    next_prompt = step.next_prompt
-
-                if step.final_payload:
-                    final_payload = step.final_payload
 
                 if step.action == LoopAction.CONTINUE:
                     continue
                 if step.action == LoopAction.BREAK:
+                    success = True
                     break
+            else:
+                logger.debug("[check_gen_code] Skipping check_gen_code()")
 
-            # ------------------------------------------------
-            # 9. LJ2: Loop judge for Check result, Retry Limit
-            # ------------------------------------------------
-            logger.debug(
-                f"[Loop] context.is_code_check_error: {context.is_code_check_error}"
+        # ---------------------------------------------
+        # 6. Retry Limit Check
+        # ---------------------------------------------
+        if not success:
+            logger.error("[retry limit check] Retry limit exceeded")
+            final_payload = DonePayload(
+                status=DoneStatus.FAILED,
+                message="Retry Limit exceeded",
+            )
+            yield await sse_event(EventType.DONE, final_payload.model_dump())
+            return
+
+        # ---------------------------------------------
+        # 7. CP3: Debug Checkpoint - before run_build()
+        # ---------------------------------------------
+        logger.debug(f"[CP3] Current debug_mode: {debug_mode}")
+        if settings.debug:
+            debug_mode = await debug_checkpoint(
+                cp_name="CP3",
+                current_mode=debug_mode,
+                context=context,
             )
 
-            if context.is_code_check_error == IsCodeCheckError.NO_ERROR:
-                logger.debug("[Loop] Finished (break)")
-                break
-
-            # Retry limit
-            logger.debug(
-                f"[retry limit check] i={i} "
-                f"settings.code_gen_retry={settings.code_gen_retry}"
+        # -------------------
+        # 8. Call run_build()
+        # -------------------
+        logger.debug(f"[run_build] context.build_check: {context.build_check}")
+        if context.build_check and debug_mode != DebugMode.SKIP_AGENT:
+            logger.debug("run_build_step called")
+            step_result = await run_build_step(
+                context=context,
+                settings=settings,
             )
-            if i == settings.code_gen_retry - 1:
-                logger.error("[retry limit check] Retry limit exceeded")
-                final_payload = DonePayload(
-                    status=DoneStatus.FAILED,
-                    message="Retry Limit exceeded",
-                )
+
+            for ev in step_result.sse_events:
+                yield await sse_event(ev.event, ev.payload)
+
+            if step_result.final_payload:
+                final_payload = step_result.final_payload
+
+            if step_result.result is not None:
+                if step_result.result.abort_flg:
+                    yield await sse_event(
+                        EventType.DONE,
+                        final_payload.model_dump(),
+                    )
+                    return
+
+        # ---------------------
+        # 9. Call run_rebuild()
+        # ---------------------
+        if step_result.result is not None:
+            if (
+                context.build_check
+                and debug_mode != DebugMode.SKIP_AGENT
+                and not step_result.result.result
+            ):
+                async for ev in run_rebuild_step(
+                    context=context,
+                    build_result=step_result.result,
+                ):
+                    yield await sse_event(ev.event, ev.payload)
 
     except Exception as e:
         logger.error(f"Unexpected error: {e}")

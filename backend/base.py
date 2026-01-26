@@ -17,6 +17,7 @@ class EventType(StrEnum):
     TEST_RUN = "test_run"
     TEST_RESULT = "test_result"
     TEST_SCREENSHOT = "test_screenshot"
+    ANALYZER_RESULT = "analyzer_result"
 
 
 class StartedStatus(StrEnum):
@@ -56,6 +57,13 @@ class LoopAction(StrEnum):
     NORMAL = "normal"
     CONTINUE = "continue"
     BREAK = "break"
+
+
+class Confidence(StrEnum):
+    PROBABLE = "probable"
+    LIKELY = "likely"
+    POSSIBLE = "possible"
+    UNCLEAR = "unclear"
 
 
 # Model Definitions
@@ -241,10 +249,18 @@ class SSEPayload(BaseModel):
 
 
 class StepResult(BaseModel):
-    action: LoopAction
+    action: LoopAction | None = None  # for step_gen_code, step_check_code
+    result: FunctionResult | None = None  # for step_run_build
     sse_events: list[SSEPayload] = []
-    next_prompt: str | None = None
     final_payload: DonePayload | None = None
+
+
+class BuildErrorAnalyzerResult(BaseModel):
+    summary: str
+    root_cause: str
+    files_to_fix: list[str]
+    fix_policy: list[str]
+    confidence: Confidence
 
 
 TreeNode = Union[DirectoryNode, FileNode]

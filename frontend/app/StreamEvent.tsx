@@ -5,8 +5,19 @@ import {
   Emoji,
   ResponseEvent,
   ResponseStatus,
+  BuildErrorAnalyzerPayload,
 } from "./types";
 import { formatDateTime } from "./util";
+
+const confidenceColorMap: Record<
+  BuildErrorAnalyzerPayload["confidence"],
+  string
+> = {
+  probable: "text-ctm-blue-500",
+  likely: "text-ctm-green-500",
+  possible: "text-ctm-yellow-200",
+  unclear: "text-ctm-orange-400",
+};
 
 interface StreamEventProps {
   status: string;
@@ -56,6 +67,14 @@ function isTestScreenshotEvent(
   { event: typeof EventTypes.TEST_SCREENSHOT }
 > {
   return event.event === EventTypes.TEST_SCREENSHOT;
+}
+function isAnalyzerResultEvent(
+  event: StreamResponse,
+): event is Extract<
+  StreamResponse,
+  { event: typeof EventTypes.ANALYZER_RESULT }
+> {
+  return event.event === EventTypes.ANALYZER_RESULT;
 }
 
 // StreamEvent Function
@@ -217,6 +236,25 @@ const StreamEvent = ({ status, responseInfo }: StreamEventProps) => {
                     <div></div>
                     <div className="col-span-5 text-app-detail ml-9 text-muted-foreground">
                       <pre>{filename} created</pre>
+                    </div>
+                  </div>
+                </div>
+              );
+            }
+
+            // ----- analyzer_result event -----
+            if (isAnalyzerResultEvent(sr)) {
+              const { confidence } = sr.payload;
+              const colorClass = confidenceColorMap[confidence];
+              return (
+                <div key={`analyzer-${idx}`}>
+                  <div className="grid grid-cols-6 items-center">
+                    <div></div>
+                    <div className="col-span-5 text-app-detail ml-9 text-muted-foreground">
+                      <pre>
+                        confidence:{" "}
+                        <span className={colorClass}>{confidence}</span>
+                      </pre>
                     </div>
                   </div>
                 </div>

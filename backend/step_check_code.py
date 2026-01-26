@@ -2,6 +2,7 @@ import json
 
 from base import (
     EventType,
+    IsCodeCheckError,
     LocalContext,
     LoopAction,
     PromptRequest,
@@ -31,7 +32,13 @@ async def check_code_step(prompt: str, context: LocalContext) -> StepResult:
         except Exception as e:
             logger.error(f"[check_gen_code] Invalid JSON: {e}")
 
+    if context.is_code_check_error == IsCodeCheckError.ESLINT_ERROR:
+        return StepResult(
+            action=LoopAction.CONTINUE,
+            sse_events=sse_events,
+        )
+
     return StepResult(
-        action=LoopAction.NORMAL,
+        action=LoopAction.BREAK,
         sse_events=sse_events,
     )

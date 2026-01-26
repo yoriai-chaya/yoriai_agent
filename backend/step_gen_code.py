@@ -20,8 +20,6 @@ from logger import logger
 async def gen_code_step(
     final_prompt: str,
     context: LocalContext,
-    retry_index: int,
-    retry_limit: int,
 ) -> StepResult:
     sse_events: list[SSEPayload] = []
 
@@ -56,17 +54,6 @@ async def gen_code_step(
                 ).model_dump(),
             )
         )
-
-        if retry_index == retry_limit - 1:
-            return StepResult(
-                action=LoopAction.BREAK,
-                sse_events=sse_events,
-                final_payload=DonePayload(
-                    status=DoneStatus.FAILED,
-                    message="Retry Limit exceeded",
-                ),
-            )
-
         return StepResult(action=LoopAction.CONTINUE, sse_events=sse_events)
 
     except AgentsException as e:
