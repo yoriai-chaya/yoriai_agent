@@ -255,6 +255,8 @@ def save_source_file(
     logger.debug(f"src_file: {src_file}")
     stepid_dir = ctx.context.stepid_dir
     logger.debug(f"stepid_dir: {stepid_dir}")
+    dir = Path(file_path).parent
+    logger.debug(f"dir: {dir}")
     try:
         if not src_path.exists():
             return AgentResult(
@@ -267,7 +269,7 @@ def save_source_file(
             src_file=src_file,
             src_dir=src_dir,
             stepid_dir=stepid_dir,
-            dir=Path(file_path),
+            dir=dir,
         )
 
         # Overwrite original file
