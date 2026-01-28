@@ -194,6 +194,7 @@ async def handle_gen_code(
         # 8. Call run_build()
         # -------------------
         logger.debug(f"[run_build] context.build_check: {context.build_check}")
+        rebuild_flg = False
         if context.build_check and debug_mode != DebugMode.SKIP_AGENT:
             logger.debug("run_build_step called")
             step_result = await run_build_step(
@@ -215,18 +216,23 @@ async def handle_gen_code(
                     )
                     return
 
+            if step_result.result is not None:
+                rebuild_flg = True
+
         # ---------------------
         # 9. Call run_rebuild()
         # ---------------------
-        if step_result.result is not None:
+        build_result = step_result.result
+        if rebuild_flg:
             if (
-                context.build_check
+                build_result is not None
+                and context.build_check
                 and debug_mode != DebugMode.SKIP_AGENT
-                and not step_result.result.result
+                and not build_result.result
             ):
                 async for ev in run_rebuild_step(
                     context=context,
-                    build_result=step_result.result,
+                    build_result=build_result,
                 ):
                     yield await sse_event(ev.event, ev.payload)
 

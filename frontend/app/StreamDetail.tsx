@@ -84,7 +84,7 @@ const StreamDetail = ({ status, responseInfo }: StreamDetailProps) => {
     <div>
       {(status === "Sended" || status === "Done") && (
         <div>
-          <p className="text-app-info my-1">Response</p>
+          <p className="text-app-info my-1 font-semibold">Response</p>
           {events.map((ev: ResponseEvent, idx: number) => {
             const sr = ev.s_res;
             // ----- agent_update event -----
@@ -92,7 +92,9 @@ const StreamDetail = ({ status, responseInfo }: StreamDetailProps) => {
               const agentName = sr.payload.agent_name;
               return (
                 <div key={`agent_update-${idx}`}>
-                  <div className="text-app-detail">{agentName}</div>
+                  <div className="text-app-detail font-semibold">
+                    {agentName}
+                  </div>
                 </div>
               );
             }
@@ -116,31 +118,34 @@ const StreamDetail = ({ status, responseInfo }: StreamDetailProps) => {
             }
             // ----- check_result event -----
             if (isCheckResultEvent(sr)) {
-              const checker = sr.payload.checker;
-              const result = sr.payload.result;
-              const result_str = result ? "OK" : "Error";
-              const rule_id = sr.payload.rule_id;
-              const detail = sr.payload.detail;
+              const { checker, result, rule_id, detail } = sr.payload;
+              const resultStr = result ? "OK" : "Error";
+
               return (
-                <div key={`check-${idx}`}>
-                  <span className="text-app-detail pl-2">
-                    {checker} check:{" "}
-                    {result ? (
-                      <span className="text-ctm-blue-500">{result_str}</span>
-                    ) : (
-                      <>
-                        <span className="text-ctm-orange-400">
-                          {result_str}
-                        </span>
-                        <div className="text-app-detail pl-4">
-                          rule: {rule_id}
-                        </div>
-                        <div className="text-app-detail pl-4 break-all">
-                          detail: {detail}
-                        </div>
-                      </>
-                    )}
-                  </span>
+                <div key={`check-${idx}`} className="pl-2 text-app-detail">
+                  <div>
+                    <span className="font-semibold">{checker} check: </span>
+                    <span
+                      className={`font-semibold ${
+                        result ? "text-ctm-blue-500" : "text-ctm-orange-400"
+                      }`}
+                    >
+                      {resultStr}
+                    </span>
+                  </div>
+
+                  {!result && (
+                    <div className="pl-4">
+                      <div>
+                        <span className="font-semibold">rule: </span>
+                        <span className="text-muted-foreground">{rule_id}</span>
+                      </div>
+                      <div className="break-all">
+                        <span className="font-semibold">detail: </span>
+                        <span className="text-muted-foreground">{detail}</span>
+                      </div>
+                    </div>
+                  )}
                 </div>
               );
             }
@@ -287,9 +292,9 @@ const StreamDetail = ({ status, responseInfo }: StreamDetailProps) => {
               const colorClass = confidenceColorMap[confidence];
               return (
                 <div key={`analyzer-${idx}`}>
-                  <div className="grid grid-cols-6 items-center">
+                  <div className="pl-4">
                     <div></div>
-                    <div className="col-span-5 text-app-detail ml-9 text-muted-foreground">
+                    <div className="text-app-detail text-muted-foreground">
                       <div>
                         <span className="font-semibold text-foreground">
                           Summary:
@@ -297,10 +302,15 @@ const StreamDetail = ({ status, responseInfo }: StreamDetailProps) => {
                         {summary}
                       </div>
                       <div>
-                        <span>Root cause:</span> {root_cause}
+                        <span className="font-semibold text-foreground">
+                          Root cause:
+                        </span>{" "}
+                        {root_cause}
                       </div>
                       <div>
-                        <span>Files to fix:</span>
+                        <span className="font-semibold text-foreground">
+                          Files to fix:
+                        </span>
                         <ul className="list-disc list-inside ml-2">
                           {files_to_fix.map((f) => (
                             <li key={f}>{f}</li>
@@ -308,14 +318,16 @@ const StreamDetail = ({ status, responseInfo }: StreamDetailProps) => {
                         </ul>
                       </div>
                       <div>
-                        <span>Fix policy:</span>
+                        <span className="font-semibold text-foreground">
+                          Fix policy:
+                        </span>
                         <ul className="list-disc list-inside ml-2">
                           {fix_policy.map((p, i) => (
                             <li key={i}>{p}</li>
                           ))}
                         </ul>
                       </div>
-                      <pre>
+                      <pre className="font-semibold text-foreground">
                         confidence:{" "}
                         <span className={colorClass}>{confidence}</span>
                       </pre>
@@ -331,14 +343,28 @@ const StreamDetail = ({ status, responseInfo }: StreamDetailProps) => {
               const message = sr.payload.message;
               return (
                 <div key={`done-${idx}`}>
-                  <div className="text-app-detail">Done</div>
-                  <div
-                    className={`text-app-detail pl-2 ${
-                      status === "Failed" ? "text-ctm-orange-400" : ""
-                    }`}
-                  >
-                    <div>status: {status}</div>
-                    <div>message: {message}</div>
+                  <div className="text-app-detail font-semibold">Done</div>
+                  <div className="text-app-detail pl-2">
+                    <div>
+                      <span className="font-semibold text-foreground">
+                        status:{" "}
+                      </span>
+                      <span
+                        className={
+                          status === "Failed"
+                            ? "text-ctm-orange-400"
+                            : "text-foreground"
+                        }
+                      >
+                        {status}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="font-semibold text-foreground">
+                        message:{" "}
+                      </span>
+                      <span>{message}</span>
+                    </div>
                   </div>
                 </div>
               );

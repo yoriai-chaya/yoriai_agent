@@ -190,6 +190,98 @@ async def run_tests(
     return result
 
 
+@function_tool
+def load_source_file(ctx: RunContextWrapper, file_path: str) -> str:
+    """
+    Load the contents of a source file.
+
+    This tool reads the specified source code file and returns its contents
+    as a string. It is intended to be used by the Fixer Agent before applying
+    modifications according to the fix policy.
+
+    Args:
+        file_path (str): Relative path to the source file to load.
+
+    Returns:
+        str: The full contents of the source file.
+
+    Raises:
+        FileNotFoundError: If the specified file does not exist.
+    """
+    logger.debug("load_source_file called")
+    output_dir: Path = ctx.context.output_dir
+    logger.debug(f"output_dir: {output_dir}")
+
+    src_path = output_dir / file_path
+    logger.debug(f"src_path: {src_path}")
+
+    if not src_path.exists():
+        raise FileNotFoundError(f"File not found: {src_path}")
+
+    return src_path.read_text(encoding="utf-8")
+
+
+@function_tool
+def save_source_file(
+    ctx: RunContextWrapper,
+    file_path: str,
+    updated_content: str,
+) -> AgentResult:
+    """
+    Save updated source code to a file, creating a backup beforehand.
+
+    This tool creates a backup of the original file by appending a timestamp
+    to its filename, then overwrites the original file with the updated content.
+
+    Args:
+        file_path (str): Relative path to the source file to overwrite.
+        updated_content (str): The modified source code content.
+
+    Returns:
+        AgentResult:
+            result (bool): True if the save operation succeeded.
+            error_detail (str | None): Error message if the operation failed.
+    """
+    logger.debug("save_source_file called")
+    output_dir: Path = ctx.context.output_dir
+    logger.debug(f"output_dir: {output_dir}")
+
+    src_path = output_dir / file_path
+    logger.debug(f"src_path: {src_path}")
+
+    src_dir: Path = src_path.parent
+    src_file: str = src_path.name
+    logger.debug(f"src_dir: {src_dir}")
+    logger.debug(f"src_file: {src_file}")
+    stepid_dir = ctx.context.stepid_dir
+    logger.debug(f"stepid_dir: {stepid_dir}")
+    try:
+        if not src_path.exists():
+            return AgentResult(
+                result=False,
+                error_detail=f"File not found: {src_path}",
+            )
+
+        # Archive
+        archive(
+            src_file=src_file,
+            src_dir=src_dir,
+            stepid_dir=stepid_dir,
+            dir=Path(file_path),
+        )
+
+        # Overwrite original file
+        src_path.write_text(updated_content, encoding="utf-8")
+
+        return AgentResult(result=True)
+
+    except Exception as e:
+        return AgentResult(
+            result=False,
+            error_detail=str(e),
+        )
+
+
 # Agents
 file_save_agent = Agent(
     name="FileSaveAgent", instructions="ファイル保存を行うエージェント"
@@ -209,6 +301,7 @@ _code_check_agent: Agent[LocalContext] | None = None
 _place_files_agent: Agent[LocalContext] | None = None
 _run_tests_agent: Agent[LocalContext] | None = None
 _build_error_analyzer_agent: Agent[LocalContext] | None = None
+_build_error_fixer_agent: Agent[LocalContext] | None = None
 
 
 def get_code_gen_agent() -> Agent[LocalContext]:
@@ -325,3 +418,31 @@ def get_build_error_analyzer_agent() -> Agent[LocalContext]:
     )
     logger.debug("get_build_error_analyzer_agent return")
     return _build_error_analyzer_agent
+
+
+def get_build_error_fixer_agent() -> Agent[LocalContext]:
+    logger.debug("get_build_error_fixer_agent called")
+
+    global _build_error_fixer_agent
+    if _build_error_fixer_agent is not None:
+        logger.debug("get_build_error_fixer_agent return cached")
+        return _build_error_fixer_agent
+
+    agents_prompt = load_agents_prompt()
+    instructions_build_error_fixer = require_str(
+        data=agents_prompt,
+        key="instructions_build_error_fixer",
+    )
+
+    logger.debug(f"instructions_build_error_fixer: {instructions_build_error_fixer}")
+
+    _build_error_fixer_agent = Agent[LocalContext](
+        name="FixerAgent",
+        instructions=instructions_build_error_fixer,
+        model=model,
+        tools=[load_source_file, save_source_file],
+        output_type=AgentResult,
+    )
+
+    logger.debug("get_build_error_fixer_agent initialized")
+    return _build_error_fixer_agent

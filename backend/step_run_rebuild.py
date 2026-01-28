@@ -10,6 +10,7 @@ from base import (
     SystemError,
 )
 from build_error_analysis import analyze_build_error
+from code_fixer import fix_code
 from logger import logger
 
 
@@ -34,7 +35,16 @@ async def run_rebuild_step(
                 analyzer_result = BuildErrorAnalyzerResult(**data["payload"])
 
         # SubStep-2: Fix Code
+        if analyzer_result is None:
+            raise ValueError("analyzer_result is None")
+
         logger.debug(f"analyzer_result: {analyzer_result}")
+        async for line in fix_code(context=context, analyzer_result=analyzer_result):
+            # Events: AGENT_RESULT
+            data = json.loads(line)
+            yield SSEPayload(
+                event=EventType(data["event"]), payload=data.get("payload", {})
+            )
 
         # SubStep-3: Validate Code
 
