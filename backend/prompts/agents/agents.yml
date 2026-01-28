@@ -90,16 +90,16 @@ prompt_build_error_fixer: |
   The Analyzer Agent has identified build errors and proposed a fix policy.
 
   Summary:
-  {{summary}}
+  {summary}
 
   Root cause:
-  {{root_cause}}
+  {root_cause}
 
   Files to fix:
-  {{files_to_fix}}
+  {files_to_fix}
 
   Fix policy:
-  {{fix_policy}}
+  {fix_policy}
 
   Perform the following tasks:
 
