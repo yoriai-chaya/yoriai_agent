@@ -20,24 +20,18 @@ from prompt_parser import load_agents_prompt, require_str
 async def fix_code(context: LocalContext, analyzer_result: BuildErrorAnalyzerResult):
     logger.debug("fix_code called")
 
-    agents_prompt = load_agents_prompt()
-    build_error_fixer_template_prompt = require_str(
-        data=agents_prompt, key="prompt_build_error_fixer"
-    )
-    filled_prompt = build_error_fixer_template_prompt.replace(
-        "{{summary}}", analyzer_result.summary
-    )
-    filled_prompt = build_error_fixer_template_prompt.replace(
-        "{{root_cause}}", analyzer_result.root_cause
-    )
-    filled_prompt = build_error_fixer_template_prompt.replace(
-        "{{files_to_fix}}", json.dumps(analyzer_result.files_to_fix, ensure_ascii=False)
-    )
-    filled_prompt = build_error_fixer_template_prompt.replace(
-        "{{fix_policy}}", json.dumps(analyzer_result.fix_policy, ensure_ascii=False)
-    )
-    logger.debug(f"filled_prompt: {filled_prompt}")
     try:
+        agents_prompt = load_agents_prompt()
+        build_error_fixer_template_prompt = require_str(
+            data=agents_prompt, key="prompt_build_error_fixer"
+        )
+        filled_prompt = build_error_fixer_template_prompt.format(
+            summary=analyzer_result.summary,
+            root_cause=analyzer_result.root_cause,
+            files_to_fix=json.dumps(analyzer_result.files_to_fix, ensure_ascii=False),
+            fix_policy=json.dumps(analyzer_result.fix_policy, ensure_ascii=False),
+        )
+        logger.debug(f"filled_prompt: {filled_prompt}")
         fixer_agent = get_build_error_fixer_agent()
         result = Runner.run_streamed(
             starting_agent=fixer_agent,
