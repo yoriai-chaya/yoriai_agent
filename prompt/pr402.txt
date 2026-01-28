@@ -1,0 +1,751 @@
+
+
+[Question]
+FastAPI, PythonでバックエンドAPIサーバのプログラムを開発しています。
+下記に現状のプログラムを示します。
+
+## 依頼事項
+以下の方針に基づき、現状のプログラムの修正案を示してください。
+
+### 方針
+- 関数run_buildは、buildコマンドを実行する関数である。
+- 関数run_buildの中では以下の事項を判定している。
+  - Case-1:buildエラー時にリトライ可能なエラーであればFunctionResultのabort_flgをFalseにセットして返却している
+  - Case-2:buildエラーでリトライ不可能なエラーであればFunctionResultのabort_flgをTrueにセットして返却している
+  - Case-3:buildが成功すればFunctionResultのabort_flgはFalseで、かつ、result=Trueをセットして返却している
+- この判定に基づき、関数run_build_stepでは、それぞれのケースに応じたsse_eventsを追加してStepResultを返却している。
+- 関数handle_gen_codeでは、関数run_build_stepの返却値に従い、
+  - Case-1のときはビルドのリトライ、つまり関数run_rebuild_stepを呼び出す（現状通り）
+  - Case-2のときはsse_eventsを送信した後、DonePayload(DoneStatus.FAILED)を送信したい（現状、これが送信されないのではないか？）
+  - Case-3のときは「# Done」コメント文の処理、つまり、logger.info()を出力し、DonePayload(DoneStatus.COMPLETED)を送信したい（現状、これも送信していない？）
+- 関数run_rebuild_stepが呼び出された場合、エラーを解消した後、再度、ビルドを実施したい（現状未実装。SubStep-3）。関数run_buildを呼び出す。
+- ただし、関数run_buildの判定結果の取り扱いについては、関数run_build_stepと異なり、Case-1のときもCase-2のときも、DonePayload(DoneStatus.FAILED)を送信したい。Case-3のときは「# Done」コメント文の処理、つまり、logger.info()を出力し、DonePayload(DoneStatus.COMPLETED)を送信したい。
+
+かなり複雑になっていますが、全体を通して極力わかりやすく記述したい。
+情報が不足していれば、質問してください。
+
+
+## 現状のプログラム(gen_code_handler.py)
+"""
+A handler for code generation, ESLint checking, and build checking
+
+Notes:
+(1)error_payload
+    In the following statement:
+    error_payload = SystemError(error="Unexpected error", detail=str(e))
+    The error value (e.g., "Unexpected error") is displayed in the frontend UI (Left-Panel)
+    Keep this error message within 20 characters.
+"""
+
+from typing import AsyncIterator, Awaitable, Callable
+
+from base import (
+    DebugMode,
+    DonePayload,
+    DoneStatus,
+    EventType,
+    LocalContext,
+    LoopAction,
+    SystemError,
+)
+from checkpoint import debug_checkpoint
+from config import Settings
+from logger import logger
+from step_check_code import check_code_step
+from step_gen_code import gen_code_step
+from step_run_build import run_build_step
+from step_run_rebuild import run_rebuild_step
+
+SSEEventCallable = Callable[[str, dict], Awaitable[str]]
+
+
+async def handle_gen_code(
+    prompt: str,
+    context: LocalContext,
+    settings: Settings,
+    sse_event: SSEEventCallable,
+) -> AsyncIterator[str]:
+    """
+    Overview:
+        A handler that performs code generation, ESLint checks, and build verification.
+
+    Description:
+        This handler executes the following steps:
+
+        1. Generate code based on a given prompt.
+           If necessary, additional text may be appended to the prompt
+           (e.g., when ESLint errors occur, supplementary instructions are added
+           to help avoid those errors).
+
+        2. Perform static analysis on the generated code using ESLint.
+
+        3. If the static check passes, run the build command to detect errors
+           that ESLint cannot catch
+           (e.g., when using useState, a build error occurs if "use client"
+           is missing).
+
+        4. If an error occurs in steps (2) or (3), retry the code generation
+           process up to the maximum number of retry attempts.
+    """
+    try:
+        category = context.category
+        logger.info(f"[{category}]: Start Code Generation")
+
+        # Completed payload (may be overwritten)
+        final_payload = DonePayload(
+            status=DoneStatus.COMPLETED,
+            message="All Tasks Completed",
+        )
+
+        debug_mode = DebugMode.CONTINUE
+        next_prompt = prompt
+
+        # =========================
+        # Code Generation Loop
+        # =========================
+        success = False
+        for i in range(settings.code_gen_retry):
+            logger.debug(f"Code Gen Loop [{i}]")
+
+            # -------------------------------
+            # 1. Create Code (prepare prompt)
+            # -------------------------------
+            final_prompt = next_prompt
+            add_prompts_len = len(context.add_prompts)
+
+            logger.debug(
+                f"[Prompt] Base prompt len={len(final_prompt)}, "
+                f"number of additional prompts={add_prompts_len}"
+            )
+
+            if add_prompts_len != 0:
+                logger.debug("[Prompt] Extending prompt with additional messages")
+                for add_prompt in context.add_prompts:
+                    logger.debug(f"[Prompt] Additional prompt: {add_prompt}")
+                    final_prompt = f"{final_prompt}\n- {add_prompt}\n"
+                    logger.debug(f"final_prompt: {final_prompt}")
+
+            # --------------------------------------------
+            # 2. CP1: Debug Checkpoint - before gen_code()
+            # --------------------------------------------
+            logger.debug(f"[CP1] Current debug_mode: {debug_mode}")
+            if settings.debug:
+                debug_mode = await debug_checkpoint(
+                    cp_name="CP1",
+                    current_mode=debug_mode,
+                )
+                if debug_mode == DebugMode.END:
+                    logger.debug("[CP1] Exiting loop")
+                    break
+
+            # ------------------
+            # 3. Call gen_code()
+            # ------------------
+            if debug_mode != DebugMode.SKIP_AGENT:
+                logger.debug("gen_code_step called")
+                step = await gen_code_step(
+                    final_prompt=final_prompt,
+                    context=context,
+                )
+
+                for ev in step.sse_events:
+                    yield await sse_event(ev.event, ev.payload)
+
+                if step.final_payload:
+                    final_payload = step.final_payload
+
+                if step.action == LoopAction.CONTINUE:
+                    continue
+                if step.action == LoopAction.BREAK:
+                    break
+            else:
+                logger.debug("[gen_code] Skipping gen_code()")
+
+            # --------------------------------------------------
+            # 4. CP2: Debug Checkpoint - before check_gen_code()
+            # --------------------------------------------------
+            logger.debug(f"[CP2] Current debug_mode: {debug_mode}")
+            if settings.debug:
+                debug_mode = await debug_checkpoint(
+                    cp_name="CP2",
+                    current_mode=debug_mode,
+                )
+                if debug_mode == DebugMode.END:
+                    logger.debug("[CP2] Exiting loop")
+                    break
+
+            # ------------------------
+            # 5. Call check_gen_code()
+            # ------------------------
+            if debug_mode != DebugMode.SKIP_AGENT:
+                logger.debug("check_code_step called")
+                step = await check_code_step(
+                    prompt=prompt,
+                    context=context,
+                )
+
+                for ev in step.sse_events:
+                    yield await sse_event(ev.event, ev.payload)
+
+                if step.action == LoopAction.CONTINUE:
+                    continue
+                if step.action == LoopAction.BREAK:
+                    success = True
+                    break
+            else:
+                logger.debug("[check_gen_code] Skipping check_gen_code()")
+
+        # ---------------------------------------------
+        # 6. Retry Limit Check
+        # ---------------------------------------------
+        if not success:
+            logger.error("[retry limit check] Retry limit exceeded")
+            final_payload = DonePayload(
+                status=DoneStatus.FAILED,
+                message="Retry Limit exceeded",
+            )
+            yield await sse_event(EventType.DONE, final_payload.model_dump())
+            return
+
+        # ---------------------------------------------
+        # 7. CP3: Debug Checkpoint - before run_build()
+        # ---------------------------------------------
+        logger.debug(f"[CP3] Current debug_mode: {debug_mode}")
+        if settings.debug:
+            debug_mode = await debug_checkpoint(
+                cp_name="CP3",
+                current_mode=debug_mode,
+                context=context,
+            )
+
+        # -------------------
+        # 8. Call run_build()
+        # -------------------
+        logger.debug(f"[run_build] context.build_check: {context.build_check}")
+        rebuild_flg = False
+        if context.build_check and debug_mode != DebugMode.SKIP_AGENT:
+            logger.debug("run_build_step called")
+            step_result = await run_build_step(
+                context=context,
+                settings=settings,
+            )
+
+            for ev in step_result.sse_events:
+                yield await sse_event(ev.event, ev.payload)
+
+            if step_result.final_payload:
+                final_payload = step_result.final_payload
+
+            if step_result.result is not None:
+                if step_result.result.abort_flg:
+                    yield await sse_event(
+                        EventType.DONE,
+                        final_payload.model_dump(),
+                    )
+                    return
+
+            if step_result.result is not None:
+                rebuild_flg = True
+
+        # ---------------------
+        # 9. Call run_rebuild()
+        # ---------------------
+        build_result = step_result.result
+        if rebuild_flg:
+            if (
+                build_result is not None
+                and context.build_check
+                and debug_mode != DebugMode.SKIP_AGENT
+                and not build_result.result
+            ):
+                async for ev in run_rebuild_step(
+                    context=context,
+                    build_result=build_result,
+                ):
+                    yield await sse_event(ev.event, ev.payload)
+
+    except Exception as e:
+        logger.error(f"Unexpected error: {e}")
+        error_payload = SystemError(
+            error="Unexpected error",
+            detail=str(e),
+        )
+        yield await sse_event(
+            EventType.SYSTEM_ERROR,
+            error_payload.model_dump(),
+        )
+        final_payload = DonePayload(
+            status=DoneStatus.FAILED,
+            message="unexpected error occurred",
+        )
+
+    # =========================
+    # Done
+    # =========================
+    logger.info(f"[{category}]: All Tasks Completed")
+    yield await sse_event(
+        EventType.DONE,
+        final_payload.model_dump(),
+    )
+
+## 現状のプログラム(step_run_build.py)
+from base import (
+    DonePayload,
+    DoneStatus,
+    EventType,
+    LocalContext,
+    SSEPayload,
+    StepResult,
+)
+from config import Settings
+from logger import logger
+from run_build_cmd import run_build
+
+
+async def run_build_step(
+    context: LocalContext,
+    settings: Settings,
+) -> StepResult:
+    sse_events: list[SSEPayload] = []
+
+    logger.debug("[run_build] Call run_build()")
+    build_result = await run_build(context, settings)
+
+    if not build_result.result:
+        # Case-1: The build command could not be executed due to a system-level error.
+        # Case-2: The build command completed, but the build output contains errors.
+        logger.error(f"[run_build] Build failed: {build_result.detail}")
+        sse_events.append(
+            SSEPayload(
+                event=EventType.CHECK_RESULT,
+                payload={
+                    "checker": "Build",
+                    "result": False,
+                    "rule_id": "npm run build",
+                    "detail": build_result.detail,
+                },
+            )
+        )
+        return StepResult(
+            result=build_result,
+            sse_events=sse_events,
+            final_payload=DonePayload(
+                status=DoneStatus.FAILED,
+                message="Build failed",
+            ),
+        )
+
+    # Case-3: The build command completed successfully with no errors detected.
+    sse_events.append(
+        SSEPayload(
+            event=EventType.CHECK_RESULT,
+            payload={
+                "checker": "Build",
+                "result": True,
+                "rule_id": "",
+                "detail": "",
+            },
+        )
+    )
+    return StepResult(result=build_result, sse_events=sse_events)
+
+## 現状のプログラム(step_run_rebuild.py)
+import json
+from typing import AsyncIterator
+
+from base import (
+    BuildErrorAnalyzerResult,
+    EventType,
+    FunctionResult,
+    LocalContext,
+    SSEPayload,
+    SystemError,
+)
+from build_error_analysis import analyze_build_error
+from code_fixer import fix_code
+from logger import logger
+
+
+async def run_rebuild_step(
+    context: LocalContext, build_result: FunctionResult
+) -> AsyncIterator[SSEPayload]:
+    logger.debug("run_rebuild_step called")
+
+    try:
+        # SubStep-1: Build Error Analysis
+        analyzer_result: BuildErrorAnalyzerResult | None = None
+        logger.debug("[gen_code] Call gen_code()")
+        async for line in analyze_build_error(
+            context=context, build_result=build_result
+        ):
+            # Events: AGENT_UPDATE, ANALYZER_RESULT
+            data = json.loads(line)
+            yield SSEPayload(
+                event=EventType(data["event"]), payload=data.get("payload", {})
+            )
+            if data["event"] == EventType.ANALYZER_RESULT:
+                analyzer_result = BuildErrorAnalyzerResult(**data["payload"])
+
+        # SubStep-2: Fix Code
+        if analyzer_result is None:
+            raise ValueError("analyzer_result is None")
+
+        logger.debug(f"analyzer_result: {analyzer_result}")
+        async for line in fix_code(context=context, analyzer_result=analyzer_result):
+            # Events: AGENT_RESULT
+            data = json.loads(line)
+            yield SSEPayload(
+                event=EventType(data["event"]), payload=data.get("payload", {})
+            )
+
+        # SubStep-3: Validate Code (re-build)
+        # ここを作成したい。
+
+    except Exception as e:
+        logger.error(f"Exception: {e}")
+        yield SSEPayload(
+            event=EventType.SYSTEM_ERROR,
+            payload=SystemError(error="Unexpected Error", detail=str(e)).model_dump(),
+        )
+
+## 現状のプログラム(run_build_cmd.py)
+import json
+from pathlib import Path
+from subprocess import CompletedProcess
+from typing import List
+
+from base import FunctionResult, LocalContext
+from config import Settings
+from logger import logger
+from run_command import run_cmd
+
+
+def load_json(path: Path) -> dict:
+    with path.open("r", encoding="utf-8") as file:
+        return json.load(file)
+
+
+def extract_stderr_messages(records: List[dict]) -> List[str]:
+    return [r.get("message", "") for r in records if r.get("stream") == "stderr"]
+
+
+async def run_build(context: LocalContext, settings: Settings) -> FunctionResult:
+    logger.debug("run_build called")
+    cwd = str(context.output_dir)
+    logger.debug(f"cwd: {cwd}")
+    build_dir = context.stepid_dir / "build"
+    build_dir.mkdir(exist_ok=True)
+
+    output_path = build_dir / "build.log"
+    logger.debug(f"output_path: {output_path}")
+
+    option = f"--logs-dir={str(build_dir)}"
+    command = ["npm", "run", "build:agent", "--", option]
+    logger.debug(f"stepid_dir: {context.stepid_dir}")
+
+    try:
+        cmd_result: CompletedProcess = run_cmd(
+            stepid_dir=context.stepid_dir,
+            command=command,
+            output_path=output_path,
+            cwd=cwd,
+        )
+        logger.debug(f"cmd_result: {cmd_result}")
+    except FileNotFoundError as e:
+        logger.error(f"Build failed : {e}")
+        detail = str(e)
+        return FunctionResult(result=False, abort_flg=True, detail=detail)
+
+    customconfig_dir = context.output_dir
+    customconfig_file = settings.build_customconfig_file
+    customconfig_path = customconfig_dir / customconfig_file
+    logger.debug(f"customconfig_path: {customconfig_path}")
+
+    try:
+        with open(customconfig_path, "r", encoding="utf-8") as f:
+            customconfig = json.load(f)
+        build_report_file = customconfig.get("build_report_file")
+        if not build_report_file:
+            detail = "Failed to get build_report_file"
+            logger.error(detail)
+            return FunctionResult(result=False, abort_flg=True, detail=detail)
+    except Exception as e:
+        detail = f"Failed to build-customconfig file: {e}"
+        logger.error(detail)
+        return FunctionResult(result=False, abort_flg=True, detail=detail)
+
+    logger.debug(f"build_report_file: {build_report_file}")
+    build_report_path = build_dir / build_report_file
+    logger.debug(f"build_report_path: {build_report_path}")
+    if not build_report_path.exists():
+        detail = f"{build_report_path} does not exist."
+        return FunctionResult(result=False, abort_flg=True, detail=detail)
+
+    result_data = load_json(build_report_path)
+
+    error_count = int(result_data.get("summary", {}).get("errorCount", 0))
+    if error_count == 0:
+        # Build Successful
+        logger.debug(f"No errors : error_count={error_count}")
+        return FunctionResult(result=True, abort_flg=False, detail="")
+
+    # Build Errors
+    records = result_data.get("records", [])
+    messages = extract_stderr_messages(records)
+
+    result_detail = "".join(m + "\n" for m in messages)
+    logger.debug(f"Build Errors - result_detail: {result_detail}")
+
+    return FunctionResult(result=False, abort_flg=False, detail=result_detail)
+
+了解です。かなり整理された設計思想をお持ちなので、
+**「責務の分離」と「Case判定の一元化」**を意識して直すと、全体がかなり読みやすくなります 👍
+
+以下では、
+
+1. **全体方針の整理（どう直すかの地図）**
+2. **設計上のキーアイデア**
+3. **具体的な修正案（コード例）**
+
+   * `run_build_step`
+   * `run_rebuild_step`
+   * `handle_gen_code`
+
+の順で説明します。
+
+---
+
+## 1. 全体方針の整理（まず何を揃えるか）
+
+今回の混乱ポイントはここです：
+
+* `run_build` は **Case判定の事実だけ**を返している（👍 良い）
+* しかし
+
+  * `run_build_step`
+  * `handle_gen_code`
+  * `run_rebuild_step`
+
+  それぞれで
+  **「Case-1/2/3の解釈」と「Doneを送るかどうか」**がバラバラ
+
+👉 そこで：
+
+### ✨ 方針の核心
+
+* **Case判定は `FunctionResult` のみで表現**
+* **「どう終わるか（DoneStatus）」は呼び出し側が決める**
+* `run_build_step` / `run_rebuild_step` は
+  👉 *SSEイベントを積むだけ*
+  👉 *DonePayloadは極力返さない*
+
+---
+
+## 2. Case定義をコードで固定する
+
+まず、あなたの文章を **コード上の真実**として固定します。
+
+```text
+FunctionResult の意味
+
+Case-1:
+  result=False, abort_flg=False  # リトライ可能
+
+Case-2:
+  result=False, abort_flg=True   # リトライ不可（致命的）
+
+Case-3:
+  result=True, abort_flg=False   # 成功
+```
+
+この3つだけを信じて分岐します。
+
+---
+
+## 3. 修正案（具体コード）
+
+---
+
+## 3.1 `step_run_build.py`（責務を最小化）
+
+### 修正ポイント
+
+* `DonePayload` を返さない
+* **build結果をSSEで通知するだけ**
+
+```python
+# step_run_build.py
+from base import (
+    EventType,
+    LocalContext,
+    SSEPayload,
+    StepResult,
+)
+from config import Settings
+from logger import logger
+from run_build_cmd import run_build
+
+
+async def run_build_step(
+    context: LocalContext,
+    settings: Settings,
+) -> StepResult:
+    sse_events: list[SSEPayload] = []
+
+    logger.debug("[run_build] Call run_build()")
+    build_result = await run_build(context, settings)
+
+    # 共通で CHECK_RESULT は必ず出す
+    sse_events.append(
+        SSEPayload(
+            event=EventType.CHECK_RESULT,
+            payload={
+                "checker": "Build",
+                "result": build_result.result,
+                "rule_id": "npm run build",
+                "detail": build_result.detail,
+            },
+        )
+    )
+
+    return StepResult(
+        result=build_result,
+        sse_events=sse_events,
+    )
+```
+
+👉 **Case判定は一切しない**
+👉 「これはリトライ？終了？」は呼び出し元へ
+
+---
+
+## 3.2 `step_run_rebuild.py`（SubStep-3 実装）
+
+### 追加要件
+
+* 修正後に **再度 build**
+* その結果に応じて **Doneは handle_gen_code 側で送る**
+
+```python
+# step_run_rebuild.py（追記部分のみ）
+from config import Settings
+from step_run_build import run_build_step
+
+# SubStep-3: Validate Code (re-build)
+logger.debug("[rebuild] Re-run build after fix")
+
+step_result = await run_build_step(
+    context=context,
+    settings=context.settings,  # context に持たせる or 引数追加
+)
+
+for ev in step_result.sse_events:
+    yield ev
+
+# build結果は呼び出し元で判断させる
+yield SSEPayload(
+    event=EventType.INTERNAL_RESULT,
+    payload={
+        "result": step_result.result.model_dump()
+    },
+)
+```
+
+※ `INTERNAL_RESULT` のような内部用イベントを使うか、
+`run_rebuild_step` の戻り値を `AsyncIterator[SSEPayload | FunctionResult]` にしてもOKです。
+
+---
+
+## 3.3 `handle_gen_code`（一番重要）
+
+### ポイント
+
+* **Doneを送る場所をここに一本化**
+* Caseごとの振る舞いを明示
+
+### build〜rebuild部分の修正例
+
+```python
+# --- 8. Call run_build_step ---
+step_result = await run_build_step(context, settings)
+
+for ev in step_result.sse_events:
+    yield await sse_event(ev.event, ev.payload)
+
+build_result = step_result.result
+if build_result is None:
+    raise RuntimeError("build_result is None")
+
+# ===== Case 判定 =====
+# Case-2: リトライ不可
+if build_result.abort_flg:
+    logger.error("[build] abort_flg=True -> FAILED")
+    yield await sse_event(
+        EventType.DONE,
+        DonePayload(
+            status=DoneStatus.FAILED,
+            message="Build failed (abort)",
+        ).model_dump(),
+    )
+    return
+
+# Case-3: 成功
+if build_result.result:
+    logger.info("# Done")
+    yield await sse_event(
+        EventType.DONE,
+        DonePayload(
+            status=DoneStatus.COMPLETED,
+            message="Build completed",
+        ).model_dump(),
+    )
+    return
+
+# Case-1: リトライ可能 → rebuild
+logger.info("[build] retryable error -> rebuild")
+
+async for ev in run_rebuild_step(
+    context=context,
+    build_result=build_result,
+):
+    yield await sse_event(ev.event, ev.payload)
+
+# rebuild 後の build 結果も同じルールで処理
+# （Case-1/2 → FAILED, Case-3 → COMPLETED）
+```
+
+👉 これで：
+
+| ケース    | run_build                     | handle_gen_code                    |
+| ------ | ----------------------------- | ---------------------------------- |
+| Case-1 | abort_flg=False, result=False | rebuild → 最終的に FAILED or COMPLETED |
+| Case-2 | abort_flg=True                | 即 FAILED（Done送信）                   |
+| Case-3 | result=True                   | 即 COMPLETED（Done送信）                |
+
+---
+
+## 4. この構成のメリット
+
+* ✅ **Case定義が一箇所に集約**
+* ✅ `run_build` / `run_build_step` が純粋関数っぽくなる
+* ✅ 「Doneが送られないかも？」という不安が消える
+* ✅ SubStep-3（再build）が自然に組み込める
+
+---
+
+## 5. 次にやると良い改善（任意）
+
+* `BuildCase = Enum("RETRYABLE", "ABORT", "SUCCESS")` を作る
+* `FunctionResult → case` に変換する小関数を作る
+* `handle_gen_code` の build 部分を別関数に切り出す
+
+---
+
+もし次に進むなら：
+
+* `run_rebuild_step` の **戻り値設計（Iterator vs Result）**
+* `INTERNAL_RESULT` を使わない設計
+* build / rebuild 共通ハンドラ化
+
+このあたり、どれを深掘りします？
+

@@ -41,7 +41,7 @@ instructions_build_error_analyzer: |
 prompt_build_error_analyzer: |
   An error occurred when running the `npm run build` command.
 
-  {{build_error_log}}
+  {build_error_log}
 
   Perform the following tasks and output the results according to the specified output format.
 
@@ -105,9 +105,8 @@ prompt_build_error_fixer: |
 
   1. Load each file listed in "Files to fix".
   2. Modify the source code strictly according to the fix policy.
-  3. Create a backup of the original file before saving changes.
-  4. Save the corrected source code.
-  5. Return the result of the fixing process according to the output format.
+  3. Save the corrected source code.
+  4. Return the result of the fixing process according to the output format.
 
   If any step fails, return result=false and describe the error.
 

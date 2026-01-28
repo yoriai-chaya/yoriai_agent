@@ -25,8 +25,8 @@ async def analyze_build_error(context: LocalContext, build_result: FunctionResul
     build_error_analyzer_template_prompt = require_str(
         data=agents_prompt, key="prompt_build_error_analyzer"
     )
-    filled_prompt = build_error_analyzer_template_prompt.replace(
-        "{{build_error_log}}", builderror_detail
+    filled_prompt = build_error_analyzer_template_prompt.format(
+        build_error_log=builderror_detail
     )
     logger.debug(f"filled_prompt: {filled_prompt}")
     try:
