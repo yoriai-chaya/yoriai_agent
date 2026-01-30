@@ -1,4 +1,5 @@
 import json
+from typing import AsyncIterator
 
 from base import (
     BuildErrorAnalyzerResult,
@@ -6,7 +7,6 @@ from base import (
     FunctionResult,
     LocalContext,
     SSEPayload,
-    StepResult,
     SystemError,
 )
 from build_error_analysis import analyze_build_error
@@ -18,9 +18,8 @@ from run_build_cmd import run_build
 
 async def run_rebuild_step(
     context: LocalContext, settings: Settings, build_result: FunctionResult
-) -> StepResult:
+) -> AsyncIterator[SSEPayload]:
     logger.debug("run_rebuild_step called")
-    sse_events: list[SSEPayload] = []
 
     try:
         # ------------------------------
@@ -33,12 +32,13 @@ async def run_rebuild_step(
         ):
             # Events: AGENT_UPDATE, ANALYZER_RESULT
             data = json.loads(line)
-            sse_events.append(
-                SSEPayload(
-                    event=EventType(data["event"]),
-                    payload=data.get("payload", {}),
-                )
+            payload = SSEPayload(
+                event=EventType(data["event"]),
+                payload=data.get("payload", {}),
             )
+            # Send Immediately
+            yield payload
+
             if data["event"] == EventType.ANALYZER_RESULT:
                 analyzer_result = BuildErrorAnalyzerResult(**data["payload"])
 
@@ -53,11 +53,9 @@ async def run_rebuild_step(
         async for line in fix_code(context=context, analyzer_result=analyzer_result):
             # Events: AGENT_RESULT
             data = json.loads(line)
-            sse_events.append(
-                SSEPayload(
-                    event=EventType(data["event"]),
-                    payload=data.get("payload", {}),
-                )
+            yield SSEPayload(
+                event=EventType(data["event"]),
+                payload=data.get("payload", {}),
             )
 
         # -----------------------
@@ -65,38 +63,26 @@ async def run_rebuild_step(
         # -----------------------
         logger.debug("SubStep-3: Re-run build")
         rebuild_result = await run_build(context, settings)
-        sse_events.append(
-            SSEPayload(
-                event=EventType.CHECK_RESULT,
-                payload={
-                    "checker": "Build",
-                    "result": rebuild_result.result,
-                    "rule_id": "npm run build (rebuild)",
-                    "detail": rebuild_result.detail,
-                },
-            )
+        yield SSEPayload(
+            event=EventType.CHECK_RESULT,
+            payload={
+                "checker": "Build",
+                "result": rebuild_result.result,
+                "rule_id": "npm run build (rebuild)",
+                "detail": rebuild_result.detail,
+            },
         )
 
-        return StepResult(result=rebuild_result, sse_events=sse_events)
+        # Save rebuild_result to context
+        context.rebuild_result = rebuild_result
 
     except Exception as e:
         logger.error(f"Exception: {e}")
 
-        sse_events.append(
-            SSEPayload(
-                event=EventType.SYSTEM_ERROR,
-                payload=SystemError(
-                    error="Unexpected Error",
-                    detail=str(e),
-                ).model_dump(),
-            )
-        )
-
-        return StepResult(
-            result=FunctionResult(
-                result=False,
-                abort_flg=True,
+        yield SSEPayload(
+            event=EventType.SYSTEM_ERROR,
+            payload=SystemError(
+                error="Unexpected Error",
                 detail=str(e),
-            ),
-            sse_events=sse_events,
+            ).model_dump(),
         )

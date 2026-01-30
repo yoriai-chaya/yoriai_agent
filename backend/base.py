@@ -105,6 +105,12 @@ class ScreenshotInfo(BaseModel):
     relative_url: str
 
 
+class FunctionResult(BaseModel):
+    result: bool
+    abort_flg: bool = False
+    detail: str | None = None
+
+
 class LocalContext(BaseModel):
     category: str
     output_dir: Path
@@ -124,6 +130,7 @@ class LocalContext(BaseModel):
     stepid_dir: Path
     build_check: bool | None = None
     screenshots: List[ScreenshotInfo] = []
+    rebuild_result: FunctionResult
 
 
 class ESLintInfo(BaseModel):
@@ -203,12 +210,6 @@ class RunTestsResultPayload(BaseModel):
     ok: int | None = None
     ng: int | None = None
     specs: List[PlaywrightSpecs] | None = None
-
-
-class FunctionResult(BaseModel):
-    result: bool
-    abort_flg: bool = False
-    detail: str | None = None
 
 
 class RunPlaywrightFunctionResult(BaseModel):
