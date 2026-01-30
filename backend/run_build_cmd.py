@@ -19,6 +19,11 @@ def extract_stderr_messages(records: List[dict]) -> List[str]:
 
 
 async def run_build(context: LocalContext, settings: Settings) -> FunctionResult:
+    """
+    Case-1: result=False, abort_flg=False  # retryable
+    Case-2: result=False, abort_flg=True   # abort
+    Case-3: result=True, abort_flg=False   # success
+    """
     logger.debug("run_build called")
     cwd = str(context.output_dir)
     logger.debug(f"cwd: {cwd}")
@@ -43,6 +48,7 @@ async def run_build(context: LocalContext, settings: Settings) -> FunctionResult
     except FileNotFoundError as e:
         logger.error(f"Build failed : {e}")
         detail = str(e)
+        # Case-2: result=False, abort_flg=True   # abort
         return FunctionResult(result=False, abort_flg=True, detail=detail)
 
     customconfig_dir = context.output_dir
@@ -55,10 +61,12 @@ async def run_build(context: LocalContext, settings: Settings) -> FunctionResult
             customconfig = json.load(f)
         build_report_file = customconfig.get("build_report_file")
         if not build_report_file:
+            # Case-2: result=False, abort_flg=True   # abort
             detail = "Failed to get build_report_file"
             logger.error(detail)
             return FunctionResult(result=False, abort_flg=True, detail=detail)
     except Exception as e:
+        # Case-2: result=False, abort_flg=True   # abort
         detail = f"Failed to build-customconfig file: {e}"
         logger.error(detail)
         return FunctionResult(result=False, abort_flg=True, detail=detail)
@@ -67,6 +75,7 @@ async def run_build(context: LocalContext, settings: Settings) -> FunctionResult
     build_report_path = build_dir / build_report_file
     logger.debug(f"build_report_path: {build_report_path}")
     if not build_report_path.exists():
+        # Case-2: result=False, abort_flg=True   # abort
         detail = f"{build_report_path} does not exist."
         return FunctionResult(result=False, abort_flg=True, detail=detail)
 
@@ -74,11 +83,11 @@ async def run_build(context: LocalContext, settings: Settings) -> FunctionResult
 
     error_count = int(result_data.get("summary", {}).get("errorCount", 0))
     if error_count == 0:
-        # Build Successful
+        # Case-3: result=True, abort_flg=False   # success
         logger.debug(f"No errors : error_count={error_count}")
         return FunctionResult(result=True, abort_flg=False, detail="")
 
-    # Build Errors
+    # Case-1: result=False, abort_flg=False  # retryable
     records = result_data.get("records", [])
     messages = extract_stderr_messages(records)
 

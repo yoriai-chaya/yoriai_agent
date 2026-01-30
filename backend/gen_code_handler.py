@@ -16,6 +16,7 @@ from base import (
     DonePayload,
     DoneStatus,
     EventType,
+    FunctionResult,
     LocalContext,
     LoopAction,
     SystemError,
@@ -29,6 +30,21 @@ from step_run_build import run_build_step
 from step_run_rebuild import run_rebuild_step
 
 SSEEventCallable = Callable[[str, dict], Awaitable[str]]
+
+
+def handle_build_result(
+    build_result: FunctionResult,
+) -> DonePayload:
+    if build_result.result:
+        logger.info("# Done")
+        return DonePayload(
+            status=DoneStatus.COMPLETED,
+            message="Build completed",
+        )
+    return DonePayload(
+        status=DoneStatus.FAILED,
+        message="Build failed",
+    )
 
 
 async def handle_gen_code(
@@ -194,47 +210,68 @@ async def handle_gen_code(
         # 8. Call run_build()
         # -------------------
         logger.debug(f"[run_build] context.build_check: {context.build_check}")
-        rebuild_flg = False
+
         if context.build_check and debug_mode != DebugMode.SKIP_AGENT:
-            logger.debug("run_build_step called")
-            step_result = await run_build_step(
+            build_step = await run_build_step(
                 context=context,
                 settings=settings,
             )
 
-            for ev in step_result.sse_events:
+            for ev in build_step.sse_events:
                 yield await sse_event(ev.event, ev.payload)
 
-            if step_result.final_payload:
-                final_payload = step_result.final_payload
+            _build_result = build_step.result
+            if _build_result is None:
+                raise RuntimeError("build_result is None")
 
-            if step_result.result is not None:
-                if step_result.result.abort_flg:
-                    yield await sse_event(
-                        EventType.DONE,
-                        final_payload.model_dump(),
-                    )
-                    return
+            build_result: FunctionResult = _build_result
 
-            if step_result.result is not None:
-                rebuild_flg = True
+            # --- Case-2: abort ---
+            if build_result.abort_flg:
+                logger.error("build: abort_flg=True -> FAILED")
+                payload = handle_build_result(build_result)
+                yield await sse_event(
+                    EventType.DONE,
+                    payload.model_dump(),
+                )
+                return
+
+            # --- Case-3: success ---
+            if build_result.result:
+                logger.info("# Done")
+                payload = handle_build_result(build_result)
+                yield await sse_event(
+                    EventType.DONE,
+                    payload.model_dump(),
+                )
+                return
+
+            # --- Case-1: retryable -> rebuild ---
+            logger.warning("build: retryable error -> run_rebuild")
 
         # ---------------------
         # 9. Call run_rebuild()
         # ---------------------
-        build_result = step_result.result
-        if rebuild_flg:
-            if (
-                build_result is not None
-                and context.build_check
-                and debug_mode != DebugMode.SKIP_AGENT
-                and not build_result.result
-            ):
-                async for ev in run_rebuild_step(
-                    context=context,
-                    build_result=build_result,
-                ):
-                    yield await sse_event(ev.event, ev.payload)
+        if context.build_check and debug_mode != DebugMode.SKIP_AGENT:
+            rebuild_step = await run_rebuild_step(
+                context=context,
+                settings=settings,
+                build_result=build_result,
+            )
+            for ev in rebuild_step.sse_events:
+                yield await sse_event(ev.event, ev.payload)
+
+            rebuild_result = rebuild_step.result
+            if rebuild_result is None:
+                raise RuntimeError("rebuild_result is None")
+
+            # --- rebuild result handling ---
+            payload = handle_build_result(rebuild_result)
+            yield await sse_event(
+                EventType.DONE,
+                payload.model_dump(),
+            )
+            return
 
     except Exception as e:
         logger.error(f"Unexpected error: {e}")
