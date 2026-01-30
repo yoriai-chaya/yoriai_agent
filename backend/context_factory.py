@@ -1,7 +1,7 @@
 import json
 from datetime import datetime
 
-from base import IsCodeCheckError, LocalContext
+from base import FunctionResult, IsCodeCheckError, LocalContext, LoopAction
 from common import resolve_path
 from config import Settings
 from logger import logger
@@ -71,4 +71,6 @@ def create_local_context(
         step_id=step_id,
         stepid_dir=stepid_dir,
         build_check=build_check,
+        loop_action=LoopAction.NORMAL,
+        rebuild_result=FunctionResult(result=True),
     )

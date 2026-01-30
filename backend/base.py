@@ -130,6 +130,7 @@ class LocalContext(BaseModel):
     stepid_dir: Path
     build_check: bool | None = None
     screenshots: List[ScreenshotInfo] = []
+    loop_action: LoopAction
     rebuild_result: FunctionResult
 
 

@@ -116,20 +116,15 @@ async def handle_gen_code(
             # ------------------
             if debug_mode != DebugMode.SKIP_AGENT:
                 logger.debug("gen_code_step called")
-                step = await gen_code_step(
+                async for ev in gen_code_step(
                     final_prompt=final_prompt,
                     context=context,
-                )
-
-                for ev in step.sse_events:
+                ):
                     yield await sse_event(ev.event, ev.payload)
 
-                if step.final_payload:
-                    final_payload = step.final_payload
-
-                if step.action == LoopAction.CONTINUE:
+                if context.loop_action == LoopAction.CONTINUE:
                     continue
-                if step.action == LoopAction.BREAK:
+                if context.loop_action == LoopAction.BREAK:
                     break
             else:
                 logger.debug("[gen_code] Skipping gen_code()")
@@ -152,17 +147,15 @@ async def handle_gen_code(
             # ------------------------
             if debug_mode != DebugMode.SKIP_AGENT:
                 logger.debug("check_code_step called")
-                step = await check_code_step(
+                async for ev in check_code_step(
                     prompt=prompt,
                     context=context,
-                )
-
-                for ev in step.sse_events:
+                ):
                     yield await sse_event(ev.event, ev.payload)
 
-                if step.action == LoopAction.CONTINUE:
+                if context.loop_action == LoopAction.CONTINUE:
                     continue
-                if step.action == LoopAction.BREAK:
+                if context.loop_action == LoopAction.BREAK:
                     success = True
                     break
             else:
