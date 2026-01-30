@@ -5,6 +5,7 @@ from base import (
     EventType,
     IsCodeCheckError,
     LocalContext,
+    LoopAction,
     PromptRequest,
     SSEPayload,
 )
@@ -31,4 +32,6 @@ async def check_code_step(
             logger.error(f"[check_gen_code] Invalid JSON: {e}")
 
     if context.is_code_check_error == IsCodeCheckError.ESLINT_ERROR:
-        pass
+        context.loop_action = LoopAction.CONTINUE
+    else:
+        context.loop_action = LoopAction.BREAK

@@ -6,6 +6,7 @@ from agents.exceptions import AgentsException, ModelBehaviorError
 from base import (
     EventType,
     LocalContext,
+    LoopAction,
     PromptRequest,
     SSEPayload,
     SystemError,
@@ -30,6 +31,7 @@ async def gen_code_step(
                     event=EventType(data["event"]),
                     payload=data.get("payload", {}),
                 )
+                context.loop_action = LoopAction.NORMAL
             except Exception as e:
                 logger.error(f"[gen_code] Invalid JSON: {e}")
 
@@ -42,6 +44,7 @@ async def gen_code_step(
                 detail=str(e),
             ).model_dump(),
         )
+        context.loop_action = LoopAction.CONTINUE
 
     except AgentsException as e:
         logger.error(f"[gen_code] AgentsException: {e}")
@@ -52,3 +55,4 @@ async def gen_code_step(
                 detail=str(e),
             ).model_dump(),
         )
+        context.loop_action = LoopAction.BREAK
