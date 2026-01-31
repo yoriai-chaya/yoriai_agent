@@ -2,7 +2,7 @@
 A handler for code generation, ESLint checking, and build checking
 
 Notes:
-(1)error_payload
+- error_payload
     In the following statement:
     error_payload = SystemError(error="Unexpected error", detail=str(e))
     The error value (e.g., "Unexpected error") is displayed in the frontend UI (Left-Panel)
@@ -19,7 +19,6 @@ from base import (
     FunctionResult,
     LocalContext,
     LoopAction,
-    SystemError,
 )
 from checkpoint import debug_checkpoint
 from config import Settings
@@ -38,38 +37,15 @@ async def handle_gen_code(
     settings: Settings,
     sse_event: SSEEventCallable,
 ) -> AsyncIterator[str]:
-    """
-    Overview:
-        A handler that performs code generation, ESLint checks, and build verification.
+    category = context.category
+    logger.info(f"[{category}]: Start Code Generation")
 
-    Description:
-        This handler executes the following steps:
-
-        1. Generate code based on a given prompt.
-           If necessary, additional text may be appended to the prompt
-           (e.g., when ESLint errors occur, supplementary instructions are added
-           to help avoid those errors).
-
-        2. Perform static analysis on the generated code using ESLint.
-
-        3. If the static check passes, run the build command to detect errors
-           that ESLint cannot catch
-           (e.g., when using useState, a build error occurs if "use client"
-           is missing).
-
-        4. If an error occurs in steps (2) or (3), retry the code generation
-           process up to the maximum number of retry attempts.
-    """
+    # Completed payload (may be overwritten)
+    final_payload = DonePayload(
+        status=DoneStatus.COMPLETED,
+        message="All Tasks Completed",
+    )
     try:
-        category = context.category
-        logger.info(f"[{category}]: Start Code Generation")
-
-        # Completed payload (may be overwritten)
-        final_payload = DonePayload(
-            status=DoneStatus.COMPLETED,
-            message="All Tasks Completed",
-        )
-
         debug_mode = DebugMode.CONTINUE
         next_prompt = prompt
 
@@ -225,12 +201,20 @@ async def handle_gen_code(
         # 9. Call run_rebuild()
         # ---------------------
         if rebuild_flg and context.build_check and debug_mode != DebugMode.SKIP_AGENT:
-            async for ev in run_rebuild_step(
-                context=context,
-                settings=settings,
-                build_result=build_result,
-            ):
-                yield await sse_event(ev.event, ev.payload)
+            try:
+                async for ev in run_rebuild_step(
+                    context=context,
+                    settings=settings,
+                    build_result=build_result,
+                ):
+                    yield await sse_event(ev.event, ev.payload)
+            except Exception as e:
+                logger.error(f"run_rebuild_step exception e: {str(e)}")
+                final_payload = DonePayload(
+                    status=DoneStatus.FAILED, message="Unexpected Error"
+                )
+                yield await sse_event(EventType.DONE, final_payload.model_dump())
+                return
 
             rebuild_result = context.rebuild_result
             if rebuild_result is None:
@@ -261,19 +245,12 @@ async def handle_gen_code(
             # to Done
 
     except Exception as e:
-        logger.error(f"Unexpected error: {e}")
-        error_payload = SystemError(
-            error="Unexpected error",
-            detail=str(e),
-        )
-        yield await sse_event(
-            EventType.SYSTEM_ERROR,
-            error_payload.model_dump(),
-        )
+        logger.error(f"Unexpected Error: {e}")
         final_payload = DonePayload(
-            status=DoneStatus.FAILED,
-            message="unexpected error occurred",
+            status=DoneStatus.FAILED, message="Unexpected Error"
         )
+        yield await sse_event(EventType.DONE, final_payload.model_dump())
+        return
 
     # =========================
     # Done

@@ -63,6 +63,7 @@ async def run_rebuild_step(
         # -----------------------
         logger.debug("SubStep-3: Re-run build")
         rebuild_result = await run_build(context, settings)
+        context.rebuild_result = rebuild_result
         yield SSEPayload(
             event=EventType.CHECK_RESULT,
             payload={
@@ -72,9 +73,6 @@ async def run_rebuild_step(
                 "detail": rebuild_result.detail,
             },
         )
-
-        # Save rebuild_result to context
-        context.rebuild_result = rebuild_result
 
     except Exception as e:
         logger.error(f"Exception: {e}")
@@ -86,3 +84,4 @@ async def run_rebuild_step(
                 detail=str(e),
             ).model_dump(),
         )
+        raise

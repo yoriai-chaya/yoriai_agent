@@ -117,7 +117,7 @@ def load_agents_prompt() -> dict:
 
 
 def require_str(data: dict, key: str) -> str:
-    logger.debug("requre_str called")
+    logger.debug("require_str called")
     if key not in data:
         raise KeyError(
             f"Invalid agents prompt YAML configuration: "
