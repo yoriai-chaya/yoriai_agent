@@ -4,9 +4,13 @@ from subprocess import CompletedProcess
 from typing import List
 
 from base import FunctionResult, LocalContext
+from common import archive
 from config import Settings
 from logger import logger
 from run_command import run_cmd
+
+BUILD_LOGFILE = "build.log"
+BUILD_DIR = Path("build")
 
 
 def load_json(path: Path) -> dict:
@@ -27,10 +31,12 @@ async def run_build(context: LocalContext, settings: Settings) -> FunctionResult
     logger.debug("run_build called")
     cwd = str(context.output_dir)
     logger.debug(f"cwd: {cwd}")
-    build_dir = context.stepid_dir / "build"
+    # build_dir = context.stepid_dir / "build"
+    build_dir = context.output_dir / settings.test_results_dir
     build_dir.mkdir(exist_ok=True)
 
-    output_path = build_dir / "build.log"
+    # output_path = build_dir / "build.log"
+    output_path = build_dir / BUILD_LOGFILE
     logger.debug(f"output_path: {output_path}")
 
     option = f"--logs-dir={str(build_dir)}"
@@ -84,6 +90,8 @@ async def run_build(context: LocalContext, settings: Settings) -> FunctionResult
     error_count = int(result_data.get("summary", {}).get("errorCount", 0))
     if error_count == 0:
         # Case-3: result=True, abort_flg=False   # success
+        archive(build_dir, BUILD_LOGFILE, context.stepid_dir, BUILD_DIR)
+        archive(build_dir, build_report_file, context.stepid_dir, BUILD_DIR)
         logger.debug(f"No errors : error_count={error_count}")
         return FunctionResult(result=True, abort_flg=False, detail="")
 
@@ -92,6 +100,7 @@ async def run_build(context: LocalContext, settings: Settings) -> FunctionResult
     messages = extract_stderr_messages(records)
 
     result_detail = "".join(m + "\n" for m in messages)
+    archive(build_dir, BUILD_LOGFILE, context.stepid_dir, BUILD_DIR)
+    archive(build_dir, build_report_file, context.stepid_dir, BUILD_DIR)
     logger.debug(f"Build Errors - result_detail: {result_detail}")
-
     return FunctionResult(result=False, abort_flg=False, detail=result_detail)
